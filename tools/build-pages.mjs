@@ -116,7 +116,7 @@ ${shots.map(([n, alt], i) => `          <figure class="shot${i === 0 ? ' shot--w
               <li>Every Steam game with 100+ players at its daily peak, up to 10,000, refreshed automatically.</li>
               <li>Official Windows, macOS, Linux and Steam Deck logos next to every game name.</li>
               <li>Live player counts, price and player history charts, and the lowest recorded price.</li>
-              <li>Price alerts on your wishlist, side-by-side compare and a release calendar.</li>
+              <li>Price alerts on your wishlist with Windows and Android notifications, side-by-side compare and a release calendar.</li>
               <li>Search that forgives typos, plus AI search powered by Claude in the app.</li>
             </ul>
           </div>

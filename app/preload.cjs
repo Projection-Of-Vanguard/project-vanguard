@@ -10,6 +10,7 @@ contextBridge.exposeInMainWorld('desktop', {
   setSetting: (key, value) => ipcRenderer.invoke('app:set-setting', String(key), Boolean(value)),
   openDataFolder: () => ipcRenderer.invoke('app:open-data'),
   setTitleBar: (color, symbol) => ipcRenderer.send('app:titlebar', String(color), String(symbol)),
+  notify: (title, body, hash) => ipcRenderer.send('app:notify', String(title), String(body), hash == null ? null : String(hash)),
   onCommand: (callback) => {
     if (typeof callback !== 'function') return;
     ipcRenderer.on('command', (_event, command) => { if (typeof command === 'string' && command.length < 100) callback(command); });

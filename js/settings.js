@@ -362,12 +362,18 @@ function build() {
   dialog.addEventListener('input', (e) => {
     const t = e.target;
     if (t.matches('[data-find]')) { query = t.value.trim(); render(false); return; }
-    if (t.dataset.kind === 'range') { const row = SECTIONS.flatMap((s) => s.rows || []).find((r) => r.key === t.dataset.key); t.nextElementSibling.textContent = fmt(row, t.value); setPref(t.dataset.key, +t.value, false); }
+    if (t.dataset.kind === 'range') {
+      const row = SECTIONS.flatMap((s) => s.rows || []).find((r) => r.key === t.dataset.key);
+      t.nextElementSibling.textContent = fmt(row, t.value);
+      // Resizing the page under the finger moves the slider while it's dragged, so interface size applies on release
+      if (t.dataset.key !== 'scale') setPref(t.dataset.key, +t.value, false);
+    }
     if (t.dataset.kind === 'color') setPref('accent', t.value, false);
   });
   dialog.addEventListener('change', async (e) => {
     const t = e.target;
     if (t.dataset.kind === 'select') setPref(t.dataset.key, t.value);
+    if (t.dataset.kind === 'range' && t.dataset.key === 'scale') setPref('scale', +t.value, false);
     if (t.dataset.kind === 'color') render(false);
     if (t.matches('select[data-server]')) { try { await post('/api/config', { [t.dataset.server]: t.value }); toast('Saved'); } catch (err) { toast(err.message); } }
     if (t.matches('[data-import-file]') && t.files[0]) {

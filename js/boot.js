@@ -121,8 +121,29 @@
     root.dataset.feedin = level === 'off' ? 'none' : p.feedIn;
     root.dataset.viewer = level === 'off' ? 'none' : p.viewerAnim;
     root.dataset.cmt = level === 'off' ? 'none' : p.commentsAnim;
-    s.zoom = String(Math.max(80, Math.min(130, +p.scale || 100)) / 100);
+    // Interface size: zoom the page, and expose the factor so viewport-sized boxes (vw/vh in
+    // styles.css are divided by --zoom) keep fitting the screen instead of growing with it
+    var zoom = Math.max(80, Math.min(130, +p.scale || 100)) / 100;
+    s.zoom = String(zoom);
+    s.setProperty('--zoom', String(zoom));
+    currentZoom = zoom;
+    breakpoints();
   }
+
+  // Layout breakpoints that follow Interface size. Media queries only see the window, so the
+  // phone and tablet layouts would never kick in at 130%. styles.css scopes those rules to
+  // html[data-lt-N] instead, set here when (window width / zoom) is N px or less. Asking matchMedia for
+  // N x zoom uses the browser's own viewport width, which (unlike innerWidth on phones) doesn't grow
+  // when content overflows, so at 100% this matches the original media queries exactly.
+  var BREAKPOINTS = [1220, 1180, 1130, 1100, 1000, 760, 720, 560, 480, 380, 360, 320];
+  var currentZoom = 1;
+  function breakpoints() {
+    var html = document.documentElement;
+    for (var i = 0; i < BREAKPOINTS.length; i++) {
+      html.toggleAttribute('data-lt-' + BREAKPOINTS[i], window.matchMedia('(max-width: ' + (BREAKPOINTS[i] * currentZoom) + 'px)').matches);
+    }
+  }
+  window.addEventListener('resize', breakpoints);
 
   var current = load();
   apply(current);

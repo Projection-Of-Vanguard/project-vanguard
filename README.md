@@ -52,7 +52,7 @@ On an iPhone, a Mac or Linux, use the [web version](https://projectvanguard.verc
 - **Update now** (top bar, title bar or tray) refreshes immediately with a progress ring.
 - Official **Windows, Apple, Linux and Steam Deck logos** next to every game name.
 - Live player counts, plus price and player history charts with the lowest recorded price.
-- **Price alerts** on wishlisted games, and **compare** up to four games side by side.
+- **Price alerts** on wishlisted games: when a game reaches your price you get a Windows notification, an Android notification (checked in the background about every 4 hours, even with the app closed) or a browser notification. Plus **compare** up to four games side by side.
 - A **release calendar**, review filters (most helpful or recent, positive or negative) and fuzzy search with **AI search**.
 
 **Recommendations** (the Recommendations menu, or "For you" in the title bar)

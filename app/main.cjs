@@ -5,7 +5,7 @@
 // to the local origin, external links handed to the default browser, and the Anthropic API key
 // encrypted with the Windows account (safeStorage).
 
-const { app, BrowserWindow, Tray, Menu, shell, ipcMain, safeStorage, session, nativeImage, dialog } = require('electron');
+const { app, BrowserWindow, Tray, Menu, shell, ipcMain, safeStorage, session, nativeImage, dialog, Notification } = require('electron');
 const path = require('node:path');
 const fs = require('node:fs');
 const { pathToFileURL } = require('node:url');
@@ -178,6 +178,20 @@ ipcMain.handle('app:set-setting', (event, key, value) => {
   return true;
 });
 ipcMain.handle('app:open-data', (event) => { if (fromApp(event)) shell.openPath(DATA_DIR); });
+// Windows notifications for price alerts. The page has no notification permission (every
+// permission request is denied), so it asks here; clicking the notification opens the game.
+const shown = new Set(); // keep references so click handlers survive garbage collection
+ipcMain.on('app:notify', (event, title, body, hash) => {
+  if (!fromApp(event) || !Notification.isSupported()) return;
+  if (typeof title !== 'string' || typeof body !== 'string' || !title || title.length > 120 || body.length > 300) return;
+  if (hash != null && !(typeof hash === 'string' && /^#\/app\/\d{1,8}$/.test(hash))) return;
+  const n = new Notification({ title, body, icon: ICON, silent: false });
+  shown.add(n);
+  n.on('click', () => show(hash || undefined));
+  n.on('close', () => shown.delete(n));
+  n.show();
+  setTimeout(() => shown.delete(n), 10 * 60e3);
+});
 ipcMain.on('app:titlebar', (event, color, symbol) => {
   const hex = /^#[0-9a-f]{6}$/i;
   if (!fromApp(event) || !win || !hex.test(color) || !hex.test(symbol)) return;

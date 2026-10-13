@@ -63,7 +63,9 @@ export function mountAI(root, route, cleanups) {
     const q = input.value.trim();
     if (q) location.hash = `#/ai/${encodeURIComponent(q)}`;
   });
-  root.addEventListener('click', (e) => { const b = e.target.closest('[data-example]'); if (b) location.hash = `#/ai/${encodeURIComponent(b.dataset.example)}`; });
+  const onExample = (e) => { const b = e.target.closest('[data-example]'); if (b) location.hash = `#/ai/${encodeURIComponent(b.dataset.example)}`; };
+  root.addEventListener('click', onExample);
+  cleanups.push(() => root.removeEventListener('click', onExample));
   if (!route.q) { setTimeout(() => input.focus({ preventScroll: true }), 50); return; }
 
   const out = $('[data-ai-out]', root);

@@ -2,6 +2,7 @@ import { db, loadCatalog, searchGames, searchTags, pick, norm, post, applyConten
 import { state, onChange, prune, inCart, addToCart, removeFromCart, toggleWish } from './state.js';
 import { $, $$, esc, icon, money, priceHTML, toast, useVT, reduceMotion, ago, skel, nameHTML } from './ui.js';
 import { vt, clearNames, markSource } from './transition.js';
+import { initPriceAlerts, checkPriceAlerts } from './alerts.js';
 import { viewHome, mountHome } from './views/home.js';
 import { viewDetail, mountDetail } from './views/detail.js';
 import { viewBrowse, mountBrowse, browseTitle } from './views/browse.js';
@@ -501,7 +502,7 @@ async function waitForBuild(beforeIds) {
   render();
   if (s?.error) toast(`The update could not finish: ${s.error}`);
   else toast(`Catalog updated: ${db.all.length.toLocaleString('en-US')} games${added || removed ? ` (${added} new, ${removed} removed)` : ''}`);
-  priceAlerts();
+  checkPriceAlerts();
 }
 async function updateNow() {
   if (updating) return;
@@ -513,17 +514,7 @@ async function updateNow() {
   setTimeout(() => waitForBuild(before), 1200);
 }
 
-/* Wishlist price alerts (set on a game page) */
-function priceAlerts() {
-  let seen = {};
-  try { seen = JSON.parse(localStorage.getItem('st-alert-seen') || '{}'); } catch { /* ignore */ }
-  const hits = Object.entries(state.targets).map(([id, cents]) => [db.byId.get(+id), cents]).filter(([g, cents]) => g && g.price != null && g.price <= cents && seen[g.id] !== g.price);
-  if (!hits.length) return;
-  hits.forEach(([g]) => { seen[g.id] = g.price; });
-  try { localStorage.setItem('st-alert-seen', JSON.stringify(seen)); } catch { /* ignore */ }
-  const [g] = hits[0];
-  setTimeout(() => toast(hits.length === 1 ? `Price alert: ${g.name} is now $${(g.price / 100).toFixed(2)}` : `${hits.length} games reached your alert price`, { label: 'View', fn: () => { location.hash = hits.length === 1 ? `#/app/${g.id}` : '#/browse/wishlist'; } }), 2400);
-}
+/* Wishlist price alerts live in alerts.js (system notifications on every platform) */
 
 /* ------------------------------------------------------------------- boot */
 
@@ -558,7 +549,7 @@ async function boot() {
   }).catch(() => {});
   render();
   saleAlerts();
-  priceAlerts();
+  initPriceAlerts();
   initComments();
   initCompareTray();
   fetch('/api/status', { cache: 'no-store' }).then((r) => r.json()).then((st) => { if (st.building && !updating) { updating = true; waitForBuild(new Set(db.all.map((g) => g.id))); } }).catch(() => {});

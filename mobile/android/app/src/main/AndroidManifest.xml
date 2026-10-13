@@ -39,4 +39,6 @@
     <!-- Permissions -->
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Price alert notifications (asked for when the first alert is set) -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 </manifest>

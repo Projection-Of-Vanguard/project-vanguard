@@ -48,10 +48,13 @@ export function mountCompare(root, cleanups, rerender) {
     if (g && !state.compare.includes(g.id)) { toggleCompare(g.id); rerender(); }
   });
   input.addEventListener('change', () => form.requestSubmit());
-  root.addEventListener('click', (e) => {
+  // The view container outlives this page, so the listener is removed on the next render
+  const onClick = (e) => {
     const b = e.target.closest('[data-cmp-remove]');
-    if (b) { toggleCompare(+b.dataset.cmpRemove); rerender(); }
-  });
+    if (b && state.compare.includes(+b.dataset.cmpRemove)) { toggleCompare(+b.dataset.cmpRemove); rerender(); }
+  };
+  root.addEventListener('click', onClick);
+  cleanups.push(() => root.removeEventListener('click', onClick));
 }
 
 /** The floating tray that shows what is queued for comparison. */

@@ -420,10 +420,11 @@ async function livePlayers(id) {
 
 function newsItem(n, appid) {
   const c = String(n.contents || '');
-  let img = (c.match(/\{STEAM_CLAN_IMAGE\}([^\s\[\]"'<]+)/) || [])[1];
+  // Steam posts use {STEAM_CLAN_IMAGE} and the newer {STEAM_CLAN_LOC_IMAGE}, and both [img]url[/img] and [img src="url"]
+  let img = (c.match(/\{STEAM_CLAN(?:_LOC)?_IMAGE\}([^\s\[\]"'<]+)/) || [])[1];
   if (img) img = `https://clan.akamai.steamstatic.com/images/${img.replace(/^\//, '')}`;
-  else img = (c.match(/\[img\](https:[^\[]+)\[\/img\]/i) || c.match(/<img[^>]+src="(https:[^"]+)"/i) || [])[1] || null;
-  const text = c.replace(/\{STEAM_CLAN_IMAGE\}\S+/g, '').replace(/\[\/?[a-z*0-9]+(?:=[^\]]*)?\]/gi, ' ').replace(/<[^>]+>/g, ' ')
+  else img = (c.match(/\[img\](https:[^\[]+)\[\/img\]/i) || c.match(/\[img [^\]]*src="(https:[^"]+)"/i) || c.match(/<img[^>]+src="(https:[^"]+)"/i) || [])[1] || null;
+  const text = c.replace(/\{STEAM_CLAN(?:_LOC)?_IMAGE\}\S*/g, '').replace(/\[\/?[a-z*0-9]+(?:[= ][^\]]*)?\]/gi, ' ').replace(/<[^>]+>/g, ' ')
     .replace(/https?:\/\/\S+/g, '').replace(/&[a-z]+;/g, ' ').replace(/\s+/g, ' ').trim();
   const url = /^https:\/\//.test(n.url || '') ? n.url : `https://store.steampowered.com/news/app/${appid}`;
   return { id: n.gid, appid, title: n.title, url, author: n.author || n.feedlabel || '', date: n.date, img, text: text.slice(0, 320) };
@@ -847,6 +848,14 @@ function makeHandler(port) {
         if (pathname === '/api/catalog') { if (!allow(`${ip}:catalog`, LIMITS.catalog)) throw fail(429, 'Too many requests'); return sendCatalog(req, res); }
         if (!allow(`${ip}:read`, LIMITS.read)) throw fail(429, 'Too many requests');
         if (pathname === '/api/session') return sendJSON(req, res, 200, { csrf: CSRF, config: publicConfig() });
+        // Current prices for up to 100 games: price alerts check these (the phone app in the background)
+        if (pathname === '/api/prices') {
+          const ids = [...new Set((searchParams.get('ids') || '').split(',').map(Number))].filter((n) => Number.isInteger(n) && n > 0 && n < 1e8).slice(0, 100);
+          const wanted = new Set(ids);
+          const prices = {};
+          for (const g of catalog?.games || []) if (wanted.has(g.id)) prices[g.id] = { name: g.n, price: g.f ? 0 : g.p ?? null, orig: g.o ?? g.p ?? null, disc: g.d || 0 };
+          return sendJSON(req, res, 200, { updated: catalog?.updated || null, prices }, 300);
+        }
         if (pathname === '/api/status') {
           return sendJSON(req, res, 200, { updated: catalog?.updated || null, count: catalog?.games.length || 0, building: !!building, progress: buildProgress, pct: buildPct, error: lastError, nextRefresh: catalog ? catalog.updated * 1000 + config.refreshHours * 3600e3 : null, changes: catalog?.changes || null });
         }
