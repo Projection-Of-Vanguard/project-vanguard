@@ -4,12 +4,13 @@ An unofficial redesign of the Steam store and community, running on live Steam d
 
 **[Website](https://projection-of-vanguard.github.io)** · **[Web version](https://projectvanguard.vercel.app)** · **[Download for Windows](https://github.com/Projection-Of-Vanguard/project-vanguard/releases/latest)**
 
-![The Steam Redesigned store home page](pages/screenshots/home.jpg)
+![The Steam Redesigned Windows app](pages/screenshots/app-window.jpg)
 
 | | |
 |---|---|
 | ![Game page](pages/screenshots/game.jpg) | ![Community](pages/screenshots/community.jpg) |
 | ![AI search](pages/screenshots/ai-search.jpg) | ![Release calendar](pages/screenshots/calendar.jpg) |
+| ![The website on a phone](pages/screenshots/mobile.jpg) | ![The store home page in a browser](pages/screenshots/home.jpg) |
 
 ## Download
 
