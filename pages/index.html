@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Steam Redesigned — Project Vanguard</title>
+  <meta name="description" content="An unofficial redesign of the Steam store and community, as a Windows desktop app and a website. Live Steam data, AI search, recommendations and more.">
+  <meta name="color-scheme" content="dark">
+  <meta name="theme-color" content="#0b1828">
+  <meta property="og:title" content="Steam Redesigned — Project Vanguard">
+  <meta property="og:description" content="An unofficial redesign of the Steam store and community for Windows and the web.">
+  <meta property="og:image" content="https://projection-of-vanguard.github.io/screenshots/home.jpg">
+  <link rel="icon" href="assets/icon.png">
+  <link rel="preload" href="assets/fonts/ChakraPetch-700-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+  <header class="top">
+    <div class="wrap top__in">
+      <a class="brand" href="#top" aria-label="Project Vanguard home"><svg class="mark" viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="14.5" fill="none" stroke="currentColor" stroke-width="2.2"/><circle cx="20.5" cy="12" r="4.2" fill="none" stroke="var(--blue)" stroke-width="2.4"/><circle cx="11" cy="20.5" r="3.1" fill="currentColor"/><path d="M3 18.5 11 20.5 17.2 14.6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Project <b>Vanguard</b></span></a>
+      <nav aria-label="Sections">
+        <a href="#screens">Screens</a>
+        <a href="#features">Features</a>
+        <a href="#download">Download</a>
+        <a href="#security">Security</a>
+        <a href="https://github.com/Projection-Of-Vanguard/project-vanguard">GitHub</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main">
+    <section class="hero" id="top">
+      <div class="wrap hero__in">
+        <div class="hero__copy">
+          <h1>Steam Redesigned</h1>
+          <p class="lede">An unofficial redesign of the Steam store and community, running on live Steam data. Use it as a Windows app or right in your browser.</p>
+          <div class="hero__actions">
+            <a class="btn btn--primary btn--lg" href="https://github.com/Projection-Of-Vanguard/project-vanguard/releases/download/v3.0.0/Steam-Redesigned-Setup-3.0.0.exe"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3 5.1 10.4 4v7.2H3zm0 13.8 7.4 1.1v-7.1H3zm8.3 1.2L21 21.5v-8.6h-9.7zm0-16.2v7.3H21V2.5z"/></svg>Download for Windows</a>
+            <a class="btn btn--ghost btn--lg" href="https://projectvanguard.vercel.app">Open the web version</a>
+          </div>
+          <p class="hero__meta">Version 3.0.0 · 0.8 MB setup wizard · Windows 10 and 11, 64-bit · Free</p>
+        </div>
+        <figure class="hero__shot">
+          <div class="window"><div class="window__bar"><span></span><span></span><span></span></div><img src="screenshots/home.jpg" width="1440" height="900" alt="The Steam Redesigned store home page, with the featured carousel and the download band"></div>
+        </figure>
+      </div>
+    </section>
+
+    <section class="band" id="screens" aria-labelledby="h-screens">
+      <div class="wrap">
+        <h2 id="h-screens">A closer look</h2>
+        <p class="section-lede">Every screen is rebuilt from scratch with new layouts, motion and colour, while keeping Steam's blue.</p>
+        <div class="gallery">
+          <figure class="shot shot--wide"><a href="screenshots/app-window.jpg"><img src="screenshots/app-window.jpg" width="1440" height="900" loading="lazy" alt="The Windows app, with its own title bar menu"></a><figcaption>The Windows app, with its own title bar menu</figcaption></figure>
+          <figure class="shot"><a href="screenshots/game.jpg"><img src="screenshots/game.jpg" width="1440" height="900" loading="lazy" alt="Game page with live player count, OS logos, media and reviews"></a><figcaption>Game page with live player count, OS logos, media and reviews</figcaption></figure>
+          <figure class="shot"><a href="screenshots/community.jpg"><img src="screenshots/community.jpg" width="1440" height="900" loading="lazy" alt="Community feed with comments that open in place"></a><figcaption>Community feed with comments that open in place</figcaption></figure>
+          <figure class="shot"><a href="screenshots/ai-search.jpg"><img src="screenshots/ai-search.jpg" width="1440" height="900" loading="lazy" alt="AI search turns a plain request into filters"></a><figcaption>AI search turns a plain request into filters</figcaption></figure>
+          <figure class="shot"><a href="screenshots/calendar.jpg"><img src="screenshots/calendar.jpg" width="1440" height="900" loading="lazy" alt="Release calendar of popular upcoming games"></a><figcaption>Release calendar of popular upcoming games</figcaption></figure>
+          <figure class="shot"><a href="screenshots/download.jpg"><img src="screenshots/download.jpg" width="1440" height="900" loading="lazy" alt="Download page on the website"></a><figcaption>Download page on the website</figcaption></figure>
+        </div>
+      </div>
+    </section>
+
+    <section class="band" id="features" aria-labelledby="h-features">
+      <div class="wrap">
+        <h2 id="h-features">What it does</h2>
+        <div class="features">
+          <div>
+            <h3>Store</h3>
+            <ul>
+              <li>Every Steam game with 100+ players at its daily peak, up to 10,000, refreshed automatically.</li>
+              <li>Official Windows, macOS, Linux and Steam Deck logos next to every game name.</li>
+              <li>Live player counts, price and player history charts, and the lowest recorded price.</li>
+              <li>Price alerts on your wishlist, side-by-side compare and a release calendar.</li>
+              <li>Search that forgives typos, plus AI search powered by Claude in the app.</li>
+            </ul>
+          </div>
+          <div>
+            <h3>Recommendations</h3>
+            <ul>
+              <li>A taste profile built from what you like, wishlist, own and open.</li>
+              <li>Every pick explains why it's there.</li>
+              <li>"More like this" and "Not interested" re-rank the list instantly.</li>
+              <li>Hide tags or owned games from the whole store.</li>
+            </ul>
+          </div>
+          <div>
+            <h3>Community</h3>
+            <ul>
+              <li>Screenshots, art, videos, workshop items, guides, reviews, discussions and news.</li>
+              <li>Comment threads open in place with an animation.</li>
+            </ul>
+          </div>
+          <div>
+            <h3>Make it yours</h3>
+            <ul>
+              <li>Themes, colours, backgrounds, notifications and accessibility options.</li>
+              <li>Animation settings with a live preview: card hovers, page transitions, speed and more.</li>
+              <li>The app lives in the system tray, with an Update now button for instant refreshes.</li>
+            </ul>
+          </div>
+        </div>
+        <div class="compare">
+          <div class="compare__table">
+          <h3>App or website?</h3>
+          <table>
+            <thead><tr><th scope="col">Feature</th><th scope="col">Windows app</th><th scope="col">Website</th></tr></thead>
+            <tbody>
+              <tr><th scope="row">Store, game pages, community, recommendations</th><td>Yes</td><td>Yes</td></tr>
+              <tr><th scope="row">Catalog refresh</th><td>Every 6 hours, or on demand</td><td>Daily</td></tr>
+              <tr><th scope="row">AI search with Claude</th><td>Yes, with your own API key</td><td>Built-in search only</td></tr>
+              <tr><th scope="row">Catalog size and player limit settings</th><td>Yes</td><td>No</td></tr>
+              <tr><th scope="row">System tray, notifications</th><td>Yes</td><td>No</td></tr>
+              <tr><th scope="row">Works on phones, Macs and Linux</th><td>No</td><td>Yes</td></tr>
+            </tbody>
+          </table>
+          </div>
+          <figure class="compare__phone"><img src="screenshots/mobile.jpg" width="780" height="1688" loading="lazy" alt="The website on a phone, offering to send the download link to a PC"><figcaption>On a phone, the website offers to send the download to your PC.</figcaption></figure>
+        </div>
+      </div>
+    </section>
+
+    <section class="band band--dl" id="download" aria-labelledby="h-download">
+      <div class="wrap">
+        <h2 id="h-download">Download</h2>
+        <p class="section-lede">Version 3.0.0, released October 13, 2026. For Windows 10 and 11, 64-bit. Everything installs for your Windows account only and doesn't need administrator rights.</p>
+        <div class="files">
+        <article class="file file--main">
+          <h3>Setup wizard</h3>
+          <p>Recommended. A small program that downloads the app, checks it hasn't been tampered with, and installs it.</p>
+          <a class="btn btn--primary" href="https://github.com/Projection-Of-Vanguard/project-vanguard/releases/download/v3.0.0/Steam-Redesigned-Setup-3.0.0.exe"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0-5-5m5 5 5-5M4 19h16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Steam-Redesigned-Setup-3.0.0.exe</a>
+          <p class="file__meta">0.8 MB</p>
+          <details><summary>SHA-256 checksum</summary><code>c9dc972a63f88f11a79eb6cdbdac402fb825f23905aecad201a6ef44c0b8b007</code></details>
+        </article>
+        <article class="file">
+          <h3>Windows Installer (.msi)</h3>
+          <p>The whole app in one Windows Installer package. Good for offline installs and IT deployment.</p>
+          <a class="btn btn--ghost" href="https://github.com/Projection-Of-Vanguard/project-vanguard/releases/download/v3.0.0/Steam-Redesigned-3.0.0.msi"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0-5-5m5 5 5-5M4 19h16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Steam-Redesigned-3.0.0.msi</a>
+          <p class="file__meta">123 MB</p>
+          <details><summary>SHA-256 checksum</summary><code>c63e7eebe6c25d3856cc24eb2ac4cbcc0f2015c473c75032d753d3108bc6069c</code></details>
+        </article>
+        <article class="file">
+          <h3>Offline installer (.exe)</h3>
+          <p>The whole app in one setup file, for PCs without a fast connection.</p>
+          <a class="btn btn--ghost" href="https://github.com/Projection-Of-Vanguard/project-vanguard/releases/download/v3.0.0/Steam-Redesigned-Offline-Setup-3.0.0.exe"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0-5-5m5 5 5-5M4 19h16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Steam-Redesigned-Offline-Setup-3.0.0.exe</a>
+          <p class="file__meta">109 MB</p>
+          <details><summary>SHA-256 checksum</summary><code>26f63b7c0be7740404646b04fe931ae72072c9d15c1e050719af1ee4c12438c6</code></details>
+        </article>
+        </div>
+        <p class="files__all">All files and release notes are on the <a href="https://github.com/Projection-Of-Vanguard/project-vanguard/releases/tag/v3.0.0">GitHub release page</a>.</p>
+        <div class="install">
+          <div>
+            <h3>Installing</h3>
+            <ol>
+              <li>Run the file you downloaded.</li>
+              <li>Windows may show "Windows protected your PC" because the app isn't code-signed yet. Choose <b>More info</b>, then <b>Run anyway</b>.</li>
+              <li>Open <b>Steam Redesigned</b> from the Start menu or the Desktop. It lives in the system tray; quit it from the tray icon.</li>
+              <li>To remove it, go to Windows Settings › Apps › Installed apps.</li>
+            </ol>
+          </div>
+          <div>
+            <h3>Check your download</h3>
+            <p>Open Command Prompt in your Downloads folder and run:</p>
+            <pre><code>certutil -hashfile Steam-Redesigned-Setup-3.0.0.exe SHA256</code></pre>
+            <p>The result should match the checksum under the file above.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="band" id="security" aria-labelledby="h-security">
+      <div class="wrap">
+        <h2 id="h-security">Built to be safe to share</h2>
+        <p class="section-lede">Installing the app on another PC creates a fully independent copy. Nothing links it back to anyone else's computer.</p>
+        <div class="features">
+          <div>
+            <h3>The app</h3>
+            <ul>
+              <li>No remote control, no connection between copies and no hidden updates.</li>
+              <li>Its local data server only answers the PC it runs on. Other devices on the network can't reach it.</li>
+              <li>Refuses debugging switches, can't be turned into a script runner, and won't start if its files were modified.</li>
+              <li>Your Anthropic API key, if you add one, is encrypted with your Windows account.</li>
+            </ul>
+          </div>
+          <div>
+            <h3>The website</h3>
+            <ul>
+              <li>Read-only: settings and keys only exist in the desktop app.</li>
+              <li>Strict content security policy, HTTPS only, no framing and no tracking.</li>
+              <li>Requests from other websites are refused, and every endpoint is rate-limited.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="foot">
+    <div class="wrap foot__in">
+      <p><b>Steam Redesigned</b> is an unofficial fan project and is not affiliated with Valve. Game names, art, prices and posts belong to their owners. Data comes from the Steam store, Steam Web APIs, Steam Community and SteamSpy.</p>
+      <p><a href="https://projectvanguard.vercel.app">Web version</a> · <a href="https://github.com/Projection-Of-Vanguard/project-vanguard">Source code</a> · <a href="https://github.com/Projection-Of-Vanguard/project-vanguard/releases">All releases</a></p>
+    </div>
+  </footer>
+</body>
+</html>

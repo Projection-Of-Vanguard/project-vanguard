@@ -2,7 +2,7 @@
 
 An unofficial redesign of the Steam store and community, running on live Steam data. Use it as a Windows desktop app or in your browser.
 
-**[Website](https://projection-of-vanguard.github.io)** · **[Web version](https://project-vanguard-pi.vercel.app)** · **[Download for Windows](https://github.com/Projection-Of-Vanguard/project-vanguard/releases/latest)**
+**[Website](https://projection-of-vanguard.github.io)** · **[Web version](https://projectvanguard.vercel.app)** · **[Download for Windows](https://github.com/Projection-Of-Vanguard/project-vanguard/releases/latest)**
 
 ![The Steam Redesigned store home page](pages/screenshots/home.jpg)
 
@@ -27,7 +27,7 @@ Get the latest version from the **[releases page](https://github.com/Projection-
 - The installers aren't code-signed yet, because that needs a paid certificate. Windows SmartScreen will show "Windows protected your PC": choose **More info**, then **Run anyway**.
 - Check a file is untouched with `certutil -hashfile <file> SHA256` and compare the result with `SHA256SUMS.txt`.
 
-On a phone, a Mac or Linux, use the [web version](https://project-vanguard-pi.vercel.app). It has the same store, game pages, community and recommendations.
+On a phone, a Mac or Linux, use the [web version](https://projectvanguard.vercel.app). It has the same store, game pages, community and recommendations.
 
 ## App or website?
 

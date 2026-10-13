@@ -1,0 +1,23 @@
+{
+  "version": "3.0.0",
+  "date": "2026-10-13T17:20:13.307Z",
+  "release": "https://github.com/Projection-Of-Vanguard/project-vanguard/releases/tag/v3.0.0",
+  "wizard": {
+    "name": "Steam-Redesigned-Setup-3.0.0.exe",
+    "url": "https://github.com/Projection-Of-Vanguard/project-vanguard/releases/download/v3.0.0/Steam-Redesigned-Setup-3.0.0.exe",
+    "size": 821474,
+    "sha256": "c9dc972a63f88f11a79eb6cdbdac402fb825f23905aecad201a6ef44c0b8b007"
+  },
+  "msi": {
+    "name": "Steam-Redesigned-3.0.0.msi",
+    "url": "https://github.com/Projection-Of-Vanguard/project-vanguard/releases/download/v3.0.0/Steam-Redesigned-3.0.0.msi",
+    "size": 128782336,
+    "sha256": "c63e7eebe6c25d3856cc24eb2ac4cbcc0f2015c473c75032d753d3108bc6069c"
+  },
+  "offline": {
+    "name": "Steam-Redesigned-Offline-Setup-3.0.0.exe",
+    "url": "https://github.com/Projection-Of-Vanguard/project-vanguard/releases/download/v3.0.0/Steam-Redesigned-Offline-Setup-3.0.0.exe",
+    "size": 114409273,
+    "sha256": "26f63b7c0be7740404646b04fe931ae72072c9d15c1e050719af1ee4c12438c6"
+  }
+}

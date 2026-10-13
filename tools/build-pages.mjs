@@ -9,7 +9,7 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const OUT = path.join(ROOT, 'pages');
 const pkg = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
 const dl = JSON.parse(fs.readFileSync(path.join(OUT, 'downloads.json'), 'utf8'));
-const WEB = 'https://project-vanguard-pi.vercel.app';
+const WEB = 'https://projectvanguard.vercel.app';
 const REPO = pkg.repository.url.replace(/\.git$/, '');
 
 // Assets: the app icon and the two typefaces the app uses
@@ -26,6 +26,7 @@ const dlIcon = '<svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M
 const winIcon = '<svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3 5.1 10.4 4v7.2H3zm0 13.8 7.4 1.1v-7.1H3zm8.3 1.2L21 21.5v-8.6h-9.7zm0-16.2v7.3H21V2.5z"/></svg>';
 
 const shots = [
+  ['app-window', 'The Windows app, with its own title bar menu'],
   ['game', 'Game page with live player count, OS logos, media and reviews'],
   ['community', 'Community feed with comments that open in place'],
   ['ai-search', 'AI search turns a plain request into filters'],
@@ -97,7 +98,6 @@ const html = `<!doctype html>
         <p class="section-lede">Every screen is rebuilt from scratch with new layouts, motion and colour, while keeping Steam's blue.</p>
         <div class="gallery">
 ${shots.map(([n, alt], i) => `          <figure class="shot${i === 0 ? ' shot--wide' : ''}"><a href="screenshots/${n}.jpg"><img src="screenshots/${n}.jpg" width="1440" height="900" loading="lazy" alt="${esc(alt)}"></a><figcaption>${esc(alt)}</figcaption></figure>`).join('\n')}
-          <figure class="shot shot--phone"><a href="screenshots/mobile.jpg"><img src="screenshots/mobile.jpg" width="780" height="1688" loading="lazy" alt="The website on a phone"></a><figcaption>The website works on phones too</figcaption></figure>
         </div>
       </div>
     </section>
@@ -142,6 +142,7 @@ ${shots.map(([n, alt], i) => `          <figure class="shot${i === 0 ? ' shot--w
           </div>
         </div>
         <div class="compare">
+          <div class="compare__table">
           <h3>App or website?</h3>
           <table>
             <thead><tr><th scope="col">Feature</th><th scope="col">Windows app</th><th scope="col">Website</th></tr></thead>
@@ -154,6 +155,8 @@ ${shots.map(([n, alt], i) => `          <figure class="shot${i === 0 ? ' shot--w
               <tr><th scope="row">Works on phones, Macs and Linux</th><td>No</td><td>Yes</td></tr>
             </tbody>
           </table>
+          </div>
+          <figure class="compare__phone"><img src="screenshots/mobile.jpg" width="780" height="1688" loading="lazy" alt="The website on a phone, offering to send the download link to a PC"><figcaption>On a phone, the website offers to send the download to your PC.</figcaption></figure>
         </div>
       </div>
     </section>
