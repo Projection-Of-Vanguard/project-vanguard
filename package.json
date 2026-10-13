@@ -1,0 +1,134 @@
+{
+  "name": "steam-redesigned",
+  "productName": "Steam Redesigned",
+  "version": "3.0.0",
+  "description": "Steam Redesigned (Project Vanguard): an unofficial Steam store and community app running on live Steam data.",
+  "private": true,
+  "type": "module",
+  "main": "app/main.cjs",
+  "scripts": {
+    "start": "electron .",
+    "serve": "node server.mjs",
+    "dist": "node tools/build-installer.mjs",
+    "icon": "node tools/make-icon.mjs"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "0.133.0",
+    "@vercel/blob": "2.8.1"
+  },
+  "devDependencies": {
+    "@electron/fuses": "2.1.3",
+    "electron": "44.7.0",
+    "electron-builder": "26.15.3"
+  },
+  "author": "Project Vanguard",
+  "build": {
+    "appId": "com.projectvanguard.steamredesigned",
+    "productName": "Steam Redesigned",
+    "executableName": "SteamRedesigned",
+    "copyright": "Project Vanguard",
+    "directories": {
+      "output": "dist",
+      "buildResources": "assets"
+    },
+    "files": [
+      "app/**/*",
+      "server.mjs",
+      "index.html",
+      "styles.css",
+      "manifest.webmanifest",
+      "js/**/*",
+      "assets/**/*",
+      "package.json",
+      "!tools",
+      "!data",
+      "!dist",
+      "!dist-seed"
+    ],
+    "extraResources": [
+      {
+        "from": "dist-seed/catalog.json",
+        "to": "seed/catalog.json"
+      }
+    ],
+    "asar": true,
+    "afterPack": "tools/after-pack.cjs",
+    "win": {
+      "target": [
+        {
+          "target": "nsis-web",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "msi",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "assets/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowElevation": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Steam Redesigned",
+      "uninstallDisplayName": "Steam Redesigned (Project Vanguard)",
+      "installerIcon": "assets/icon.ico",
+      "uninstallerIcon": "assets/icon.ico",
+      "installerHeaderIcon": "assets/icon.ico",
+      "installerSidebar": "assets/installer-sidebar.bmp",
+      "uninstallerSidebar": "assets/installer-sidebar.bmp",
+      "installerHeader": "assets/installer-header.bmp",
+      "deleteAppDataOnUninstall": false,
+      "runAfterFinish": true,
+      "artifactName": "Steam-Redesigned-Offline-Setup-${version}.${ext}"
+    },
+    "nsisWeb": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowElevation": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Steam Redesigned",
+      "uninstallDisplayName": "Steam Redesigned (Project Vanguard)",
+      "installerIcon": "assets/icon.ico",
+      "uninstallerIcon": "assets/icon.ico",
+      "installerHeaderIcon": "assets/icon.ico",
+      "installerSidebar": "assets/installer-sidebar.bmp",
+      "uninstallerSidebar": "assets/installer-sidebar.bmp",
+      "installerHeader": "assets/installer-header.bmp",
+      "deleteAppDataOnUninstall": false,
+      "runAfterFinish": true,
+      "appPackageUrl": "https://github.com/Projection-Of-Vanguard/project-vanguard/releases/download/v3.0.0/steam-redesigned-3.0.0-x64.nsis.7z",
+      "artifactName": "Steam-Redesigned-Setup-${version}.${ext}",
+      "include": "assets/installer.nsh"
+    },
+    "msi": {
+      "oneClick": false,
+      "perMachine": false,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Steam Redesigned",
+      "runAfterFinish": true,
+      "artifactName": "Steam-Redesigned-${version}.${ext}"
+    }
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Projection-Of-Vanguard/project-vanguard.git"
+  },
+  "homepage": "https://projection-of-vanguard.github.io/"
+}

@@ -1,0 +1,10 @@
+{
+  "name": "Steam Redesign",
+  "short_name": "Steam Redesign",
+  "description": "Unofficial Steam store and community redesign, running on live Steam data.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0b1424",
+  "theme_color": "#0b1424",
+  "icons": [{ "src": "/assets/icon.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }]
+}

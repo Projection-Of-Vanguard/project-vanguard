@@ -1,0 +1,15 @@
+# Per-PC data: catalog, history, cache, settings and secrets
+data/
+# Build output
+dist/
+dist-seed/
+node_modules/
+# Generated website (tools/build-web.mjs) and its Vercel link and env files
+web/
+.env*
+.vercel/
+# Local tooling
+.claude/
+.playwright-mcp/
+*.lnk
+*.log
