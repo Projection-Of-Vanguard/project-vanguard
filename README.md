@@ -1,6 +1,6 @@
 # Steam Redesigned (Project Vanguard)
 
-An unofficial redesign of the Steam store and community, running on live Steam data. Use it as a Windows desktop app or in your browser.
+An unofficial redesign of the Steam store and community, running on live Steam data. Use it as a Windows desktop app or in your browser (BETA VERSION!!) .
 
 **[Website](https://projection-of-vanguard.github.io)** · **[Web version](https://projectvanguard.vercel.app)** · **[Download for Windows](https://github.com/Projection-Of-Vanguard/project-vanguard/releases/latest)**
 
