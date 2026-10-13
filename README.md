@@ -10,7 +10,7 @@ An unofficial redesign of the Steam store and community, running on live Steam d
 |---|---|
 | ![Game page](pages/screenshots/game.jpg) | ![Community](pages/screenshots/community.jpg) |
 | ![AI search](pages/screenshots/ai-search.jpg) | ![Release calendar](pages/screenshots/calendar.jpg) |
-| ![The website on a phone](pages/screenshots/mobile.jpg) | ![The store home page in a browser](pages/screenshots/home.jpg) |
+| ![The store home page in a browser](pages/screenshots/home.jpg) | ![Download page](pages/screenshots/download.jpg) |
 
 ## Download
 
