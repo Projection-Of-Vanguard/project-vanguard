@@ -4,11 +4,11 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Steam Redesigned — Project Vanguard</title>
-  <meta name="description" content="An unofficial redesign of the Steam store and community, as a Windows desktop app and a website. Live Steam data, AI search, recommendations and more.">
+  <meta name="description" content="An unofficial redesign of the Steam store and community, as a Windows app, an Android app and a website. Live Steam data, AI search, recommendations and more.">
   <meta name="color-scheme" content="dark">
   <meta name="theme-color" content="#0b1828">
   <meta property="og:title" content="Steam Redesigned — Project Vanguard">
-  <meta property="og:description" content="An unofficial redesign of the Steam store and community for Windows and the web.">
+  <meta property="og:description" content="An unofficial redesign of the Steam store and community for Windows, Android and the web.">
   <meta property="og:image" content="https://projection-of-vanguard.github.io/screenshots/home.jpg">
   <link rel="icon" href="assets/icon.png">
   <link rel="preload" href="assets/fonts/ChakraPetch-700-latin.woff2" as="font" type="font/woff2" crossorigin>
@@ -34,12 +34,12 @@
       <div class="wrap hero__in">
         <div class="hero__copy">
           <h1>Steam Redesigned</h1>
-          <p class="lede">An unofficial redesign of the Steam store and community, running on live Steam data. Use it as a Windows app or right in your browser.</p>
+          <p class="lede">An unofficial redesign of the Steam store and community, running on live Steam data. Use it as a Windows app, an Android app or right in your browser.</p>
           <div class="hero__actions">
             <a class="btn btn--primary btn--lg" href="https://github.com/Projection-Of-Vanguard/project-vanguard/releases/download/v3.0.0/Steam-Redesigned-Setup-3.0.0.exe"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3 5.1 10.4 4v7.2H3zm0 13.8 7.4 1.1v-7.1H3zm8.3 1.2L21 21.5v-8.6h-9.7zm0-16.2v7.3H21V2.5z"/></svg>Download for Windows</a>
-            <a class="btn btn--ghost btn--lg" href="https://projectvanguard.vercel.app">Open the web version</a>
+            <a class="btn btn--ghost btn--lg" href="https://github.com/Projection-Of-Vanguard/project-vanguard/releases/download/v3.0.0/Steam-Redesigned-3.0.0.apk"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M18.4395 5.5586c-.675 1.1664-1.352 2.3318-2.0274 3.498-.0366-.0155-.0742-.0286-.1113-.043-1.8249-.6957-3.484-.8-4.42-.787-1.8551.0185-3.3544.4643-4.2597.8203-.084-.1494-1.7526-3.021-2.0215-3.4864a1.1451 1.1451 0 0 0-.1406-.1914c-.3312-.364-.9054-.4859-1.379-.203-.475.282-.7136.9361-.3886 1.5019 1.9466 3.3696-.0966-.2158 1.9473 3.3593.0172.031-.4946.2642-1.3926 1.0177C2.8987 12.176.452 14.772 0 18.9902h24c-.119-1.1108-.3686-2.099-.7461-3.0683-.7438-1.9118-1.8435-3.2928-2.7402-4.1836a12.1048 12.1048 0 0 0-2.1309-1.6875c.6594-1.122 1.312-2.2559 1.9649-3.3848.2077-.3615.1886-.7956-.0079-1.1191a1.1001 1.1001 0 0 0-.8515-.5332c-.5225-.0536-.9392.3128-1.0488.5449zm-.0391 8.461c.3944.5926.324 1.3306-.1563 1.6503-.4799.3197-1.188.0985-1.582-.4941-.3944-.5927-.324-1.3307.1563-1.6504.4727-.315 1.1812-.1086 1.582.4941zM7.207 13.5273c.4803.3197.5506 1.0577.1563 1.6504-.394.5926-1.1038.8138-1.584.4941-.48-.3197-.5503-1.0577-.1563-1.6504.4008-.6021 1.1087-.8106 1.584-.4941z"/></svg>Get the Android app</a>
           </div>
-          <p class="hero__meta">Version 3.0.0 · 0.8 MB setup wizard · Windows 10 and 11, 64-bit · Free</p>
+          <p class="hero__meta">Version 3.0.0 · Windows 10 and 11 · Android 7 and later · Free · <a href="https://projectvanguard.vercel.app">Open the web version</a></p>
         </div>
         <figure class="hero__shot">
           <div class="window"><div class="window__bar"><span></span><span></span><span></span></div><img src="screenshots/home.jpg" width="1440" height="900" alt="The Steam Redesigned store home page, with the featured carousel and the download band"></div>
@@ -103,20 +103,21 @@
         </div>
         <div class="compare">
           <div class="compare__table">
-          <h3>App or website?</h3>
+          <h3>Which one?</h3>
           <table>
-            <thead><tr><th scope="col">Feature</th><th scope="col">Windows app</th><th scope="col">Website</th></tr></thead>
+            <thead><tr><th scope="col">Feature</th><th scope="col">Windows app</th><th scope="col">Android app</th><th scope="col">Website</th></tr></thead>
             <tbody>
-              <tr><th scope="row">Store, game pages, community, recommendations</th><td>Yes</td><td>Yes</td></tr>
-              <tr><th scope="row">Catalog refresh</th><td>Every 6 hours, or on demand</td><td>Daily</td></tr>
-              <tr><th scope="row">AI search with Claude</th><td>Yes, with your own API key</td><td>Built-in search only</td></tr>
-              <tr><th scope="row">Catalog size and player limit settings</th><td>Yes</td><td>No</td></tr>
-              <tr><th scope="row">System tray, notifications</th><td>Yes</td><td>No</td></tr>
-              <tr><th scope="row">Works on phones, Macs and Linux</th><td>No</td><td>Yes</td></tr>
+              <tr><th scope="row">Store, game pages, community, recommendations</th><td>Yes</td><td>Yes</td><td>Yes</td></tr>
+              <tr><th scope="row">Opens instantly, full screen</th><td>Yes</td><td>Yes</td><td>In a browser tab</td></tr>
+              <tr><th scope="row">Catalog refresh</th><td>Every 6 hours, or on demand</td><td>Daily</td><td>Daily</td></tr>
+              <tr><th scope="row">AI search with Claude</th><td>Yes, with your own API key</td><td>Built-in search</td><td>Built-in search</td></tr>
+              <tr><th scope="row">Catalog size and player limit settings</th><td>Yes</td><td>No</td><td>No</td></tr>
+              <tr><th scope="row">System tray, notifications</th><td>Yes</td><td>No</td><td>No</td></tr>
+              <tr><th scope="row">Runs on</th><td>Windows 10 and 11</td><td>Android 7 and later</td><td>Any browser</td></tr>
             </tbody>
           </table>
           </div>
-          <figure class="compare__phone"><img src="screenshots/mobile.jpg" width="780" height="1688" loading="lazy" alt="The website on a phone, offering to send the download link to a PC"><figcaption>On a phone, the website offers to send the download to your PC.</figcaption></figure>
+          <figure class="compare__phone"><img src="screenshots/android-app.jpg" width="540" height="1200" loading="lazy" alt="The Steam Redesigned Android app on a Pixel phone"><figcaption>The Android app on a Pixel 8.</figcaption></figure>
         </div>
       </div>
     </section>
@@ -124,7 +125,10 @@
     <section class="band band--dl" id="download" aria-labelledby="h-download">
       <div class="wrap">
         <h2 id="h-download">Download</h2>
-        <p class="section-lede">Version 3.0.0, released October 13, 2026. For Windows 10 and 11, 64-bit. Everything installs for your Windows account only and doesn't need administrator rights.</p>
+        <p class="section-lede">Version 3.0.0, released October 13, 2026. Free for Windows 10 and 11 (64-bit) and Android 7 and later. All files and release notes are also on the <a href="https://github.com/Projection-Of-Vanguard/project-vanguard/releases/tag/v3.0.0">GitHub release page</a>.</p>
+
+        <h3 class="platform"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3 5.1 10.4 4v7.2H3zm0 13.8 7.4 1.1v-7.1H3zm8.3 1.2L21 21.5v-8.6h-9.7zm0-16.2v7.3H21V2.5z"/></svg>Windows</h3>
+        <p class="platform__note">Installs for your Windows account only and doesn't need administrator rights.</p>
         <div class="files">
         <article class="file file--main">
           <h3>Setup wizard</h3>
@@ -148,7 +152,6 @@
           <details><summary>SHA-256 checksum</summary><code>26f63b7c0be7740404646b04fe931ae72072c9d15c1e050719af1ee4c12438c6</code></details>
         </article>
         </div>
-        <p class="files__all">All files and release notes are on the <a href="https://github.com/Projection-Of-Vanguard/project-vanguard/releases/tag/v3.0.0">GitHub release page</a>.</p>
         <div class="install">
           <div>
             <h3>Installing</h3>
@@ -166,21 +169,58 @@
             <p>The result should match the checksum under the file above.</p>
           </div>
         </div>
+
+        <h3 class="platform"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M18.4395 5.5586c-.675 1.1664-1.352 2.3318-2.0274 3.498-.0366-.0155-.0742-.0286-.1113-.043-1.8249-.6957-3.484-.8-4.42-.787-1.8551.0185-3.3544.4643-4.2597.8203-.084-.1494-1.7526-3.021-2.0215-3.4864a1.1451 1.1451 0 0 0-.1406-.1914c-.3312-.364-.9054-.4859-1.379-.203-.475.282-.7136.9361-.3886 1.5019 1.9466 3.3696-.0966-.2158 1.9473 3.3593.0172.031-.4946.2642-1.3926 1.0177C2.8987 12.176.452 14.772 0 18.9902h24c-.119-1.1108-.3686-2.099-.7461-3.0683-.7438-1.9118-1.8435-3.2928-2.7402-4.1836a12.1048 12.1048 0 0 0-2.1309-1.6875c.6594-1.122 1.312-2.2559 1.9649-3.3848.2077-.3615.1886-.7956-.0079-1.1191a1.1001 1.1001 0 0 0-.8515-.5332c-.5225-.0536-.9392.3128-1.0488.5449zm-.0391 8.461c.3944.5926.324 1.3306-.1563 1.6503-.4799.3197-1.188.0985-1.582-.4941-.3944-.5927-.324-1.3307.1563-1.6504.4727-.315 1.1812-.1086 1.582.4941zM7.207 13.5273c.4803.3197.5506 1.0577.1563 1.6504-.394.5926-1.1038.8138-1.584.4941-.48-.3197-.5503-1.0577-.1563-1.6504.4008-.6021 1.1087-.8106 1.584-.4941z"/></svg>Android</h3>
+        <p class="platform__note">The store and community as a full-screen app. Your wishlist, cart and settings stay on your phone.</p>
+        <div class="files files--one">
+        <article class="file file--main">
+          <h3>Android app (.apk)</h3>
+          <p>For Android 7 and later. Download it on your phone, then open it to install.</p>
+          <a class="btn btn--primary" href="https://github.com/Projection-Of-Vanguard/project-vanguard/releases/download/v3.0.0/Steam-Redesigned-3.0.0.apk"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0-5-5m5 5 5-5M4 19h16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Steam-Redesigned-3.0.0.apk</a>
+          <p class="file__meta">3.4 MB</p>
+          <details><summary>SHA-256 checksum</summary><code>0c710064ad380a4962a8538d8e30c3712fc1fe5ddd001a096eecec9287030d19</code></details>
+        </article>
+        </div>
+        <div class="install">
+          <div>
+            <h3>Installing</h3>
+            <ol>
+              <li>Download the APK on your phone and open it from the notification or your Downloads.</li>
+              <li>The app isn't from the Play Store, so Android asks first. Tap <b>Settings</b>, turn on <b>Allow from this source</b> for your browser, then go back.</li>
+              <li>Tap <b>Install</b>. If Google Play Protect asks about an unknown app, choose <b>More details</b>, then <b>Install anyway</b>.</li>
+              <li>Open <b>Steam Redesigned</b> from your home screen. To remove it, press and hold the icon and choose <b>Uninstall</b>.</li>
+            </ol>
+          </div>
+          <div>
+            <h3>Check the signature</h3>
+            <p>Every version is signed with the same Project Vanguard key, so Android only installs updates that really come from this project. The key's SHA-256 fingerprint is:</p>
+            <pre><code>27:F2:C5:0D:14:62:71:AE:67:0C:5F:13:08:BA:50:EF:AD:28:1B:1C:8F:B6:F2:4B:3B:98:60:4C:D3:0A:A9:2F</code></pre>
+          </div>
+        </div>
       </div>
     </section>
 
     <section class="band" id="security" aria-labelledby="h-security">
       <div class="wrap">
         <h2 id="h-security">Built to be safe to share</h2>
-        <p class="section-lede">Installing the app on another PC creates a fully independent copy. Nothing links it back to anyone else's computer.</p>
-        <div class="features">
+        <p class="section-lede">Every install is a fully independent copy. Nothing links it back to anyone else's computer or phone.</p>
+        <div class="features features--three">
           <div>
-            <h3>The app</h3>
+            <h3>The Windows app</h3>
             <ul>
               <li>No remote control, no connection between copies and no hidden updates.</li>
               <li>Its local data server only answers the PC it runs on. Other devices on the network can't reach it.</li>
               <li>Refuses debugging switches, can't be turned into a script runner, and won't start if its files were modified.</li>
               <li>Your Anthropic API key, if you add one, is encrypted with your Windows account.</li>
+            </ul>
+          </div>
+          <div>
+            <h3>The Android app</h3>
+            <ul>
+              <li>The only permission it asks for is internet access: no camera, contacts, location or storage.</li>
+              <li>Talks only to this project's read-only service and Steam's image servers, always over HTTPS.</li>
+              <li>No account and no tracking; app backups are turned off, so your data stays on the phone.</li>
+              <li>Signed with the Project Vanguard key, so nobody else can publish an update to it.</li>
             </ul>
           </div>
           <div>

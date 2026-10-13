@@ -427,6 +427,37 @@ if (window.desktop) {
   });
 }
 
+/* ------------------------------------------------------------ Android app */
+
+if (window.mobileApp) {
+  // Pages on other sites (Steam, YouTube, news) open in the phone's browser; leaving the
+  // app's own origin hands the address to Android, which opens the default browser
+  document.addEventListener('click', (e) => {
+    const a = e.target.closest('a[href]');
+    if (!a || e.defaultPrevented || a.hasAttribute('download') && a.origin === location.origin) return;
+    if (!/^https?:$/.test(a.protocol) || a.origin === location.origin) return;
+    e.preventDefault();
+    location.href = a.href;
+  });
+
+  // Android's Back button closes whatever is open first (dialogs, cart, menu, search),
+  // then goes back through the app's pages, and only leaves the app from the first page
+  const closeTopOverlay = () => {
+    const dialog = [...document.querySelectorAll('dialog[open]')].pop();
+    if (dialog) { if (dialog.dispatchEvent(new Event('cancel', { cancelable: true }))) dialog.close(); return true; }
+    if (drawer.getAttribute('aria-hidden') === 'false') { closeCart(); return true; }
+    if (sheet.classList.contains('is-open')) { closeSheet(); return true; }
+    if (!sList.hidden) { closeSearch(); sInput.blur(); return true; }
+    if ($('.menu__panel.is-open')) { closeMenus(); return true; }
+    return false;
+  };
+  window.Capacitor?.Plugins?.App?.addListener('backButton', ({ canGoBack }) => {
+    if (closeTopOverlay()) return;
+    if (canGoBack) history.back();
+    else window.Capacitor.Plugins.App.exitApp();
+  });
+}
+
 /* ------------------------------------------------------- wishlist alerts */
 
 function saleAlerts() {
@@ -519,7 +550,7 @@ async function boot() {
   drawer.inert = true;
   sheet.inert = true;
   // Website vs desktop app: show only the controls that work here
-  if (window.desktop) $$('[data-web-only]').forEach((el) => el.remove());
+  if (window.desktop || window.mobileApp) $$('[data-web-only]').forEach((el) => el.remove());
   getSession().then((sess) => {
     if (!sess?.config?.publicSite) return;
     document.documentElement.dataset.site = 'public';

@@ -29,9 +29,15 @@ const files = {
   msi: pick(DIST, /^Steam-Redesigned-.*\.msi$/),
   offline: pick(DIST, /^Steam-Redesigned-Offline-Setup-.*\.exe$/),
   package: pick(path.join(DIST, 'nsis-web'), /\.7z$/),
+  android: path.join(DIST, 'android', `Steam-Redesigned-${version}.apk`),
 };
+if (!fs.existsSync(files.android)) throw new Error(`missing ${files.android}: run tools/build-android.mjs first`);
 if (path.basename(files.package) !== packageName) throw new Error(`built package ${path.basename(files.package)} does not match nsisWeb.appPackageUrl`);
+// One checksum file for every release asset (Windows from build-installer, Android from build-android)
 const sums = path.join(DIST, 'SHA256SUMS.txt');
+const allSums = fs.readFileSync(sums, 'utf8').trim().split('\n').filter((l) => !l.endsWith('.apk'));
+allSums.push(fs.readFileSync(path.join(DIST, 'android', 'SHA256SUMS.txt'), 'utf8').trim());
+fs.writeFileSync(sums, allSums.join('\n') + '\n');
 
 // 1. GitHub Release
 const manifest = { version, date: new Date().toISOString(), release: `https://github.com/${repo}/releases/tag/${tag}` };
@@ -41,17 +47,21 @@ for (const [key, file] of Object.entries(files)) {
   const sha256 = crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex');
   if (key !== 'package') manifest[key] = { name, url: `https://github.com/${repo}/releases/download/${tag}/${name}`, size, sha256 };
 }
+manifest.android.cert = fs.readFileSync(path.join(DIST, 'android', 'certificate-sha256.txt'), 'utf8').trim();
 const notes = path.join(DIST, 'release-notes.md');
-fs.writeFileSync(notes, `Steam Redesigned ${version} for Windows 10 and 11 (64-bit).
+fs.writeFileSync(notes, `Steam Redesigned ${version} for Windows 10 and 11 (64-bit) and Android 7 and later.
 
 | File | What it is |
 |---|---|
-| \`${manifest.wizard.name}\` | **Recommended.** Download wizard: downloads the app package below, checks its SHA-512, then installs. |
+| \`${manifest.wizard.name}\` | **Windows, recommended.** Download wizard: downloads the app package below, checks its SHA-512, then installs. |
 | \`${manifest.msi.name}\` | Windows Installer package of the full app. |
-| \`${manifest.offline.name}\` | Full app in one setup file, no download needed. |
-| \`${packageName}\` | The app package the wizard downloads. You don't need to download it yourself. |
+| \`${manifest.offline.name}\` | Full Windows app in one setup file, no download needed. |
+| \`${manifest.android.name}\` | **Android app.** Open it on your phone and allow installs from your browser when Android asks. |
+| \`${packageName}\` | The app package the Windows wizard downloads. You don't need to download it yourself. |
 
-All installers are per-user and need no administrator rights. They aren't code-signed yet, so Windows SmartScreen shows "Windows protected your PC": choose **More info**, then **Run anyway**.
+The Windows installers are per-user and need no administrator rights. They aren't code-signed yet, so Windows SmartScreen shows "Windows protected your PC": choose **More info**, then **Run anyway**.
+
+The Android app is signed with the Project Vanguard key and only asks for internet access. Because it isn't from the Play Store, Android asks you to allow installs from your browser the first time.
 
 **SHA-256 checksums** (check with \`certutil -hashfile <file> SHA256\`):
 \`\`\`

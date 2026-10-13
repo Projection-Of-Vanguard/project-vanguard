@@ -1,0 +1,18 @@
+{
+  "appId": "com.projectvanguard.steamredesigned",
+  "appName": "Steam Redesigned",
+  "webDir": "www",
+  "server": {
+    "androidScheme": "https",
+    "hostname": "app.projectvanguard"
+  },
+  "android": {
+    "backgroundColor": "#0b1424",
+    "allowMixedContent": false,
+    "captureInput": false,
+    "webContentsDebuggingEnabled": false
+  },
+  "plugins": {
+    "SystemBars": { "style": "DARK", "insetsHandling": "css" }
+  }
+}

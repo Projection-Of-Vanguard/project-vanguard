@@ -25,6 +25,10 @@ const mark = `<svg class="mark" viewBox="0 0 32 32" aria-hidden="true"><circle c
 const dlIcon = '<svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0-5-5m5 5 5-5M4 19h16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 const winIcon = '<svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3 5.1 10.4 4v7.2H3zm0 13.8 7.4 1.1v-7.1H3zm8.3 1.2L21 21.5v-8.6h-9.7zm0-16.2v7.3H21V2.5z"/></svg>';
 
+// The official Android mark, from the app's own icon sprite
+const androidPath = /id="i-android"[^>]*><path d="([^"]+)"/.exec(fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8'))[1];
+const androidIcon = `<svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="${androidPath}"/></svg>`;
+
 const shots = [
   ['app-window', 'The Windows app, with its own title bar menu'],
   ['game', 'Game page with live player count, OS logos, media and reviews'],
@@ -49,11 +53,11 @@ const html = `<!doctype html>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Steam Redesigned — Project Vanguard</title>
-  <meta name="description" content="An unofficial redesign of the Steam store and community, as a Windows desktop app and a website. Live Steam data, AI search, recommendations and more.">
+  <meta name="description" content="An unofficial redesign of the Steam store and community, as a Windows app, an Android app and a website. Live Steam data, AI search, recommendations and more.">
   <meta name="color-scheme" content="dark">
   <meta name="theme-color" content="#0b1828">
   <meta property="og:title" content="Steam Redesigned — Project Vanguard">
-  <meta property="og:description" content="An unofficial redesign of the Steam store and community for Windows and the web.">
+  <meta property="og:description" content="An unofficial redesign of the Steam store and community for Windows, Android and the web.">
   <meta property="og:image" content="https://projection-of-vanguard.github.io/screenshots/home.jpg">
   <link rel="icon" href="assets/icon.png">
   <link rel="preload" href="assets/fonts/ChakraPetch-700-latin.woff2" as="font" type="font/woff2" crossorigin>
@@ -79,12 +83,12 @@ const html = `<!doctype html>
       <div class="wrap hero__in">
         <div class="hero__copy">
           <h1>Steam Redesigned</h1>
-          <p class="lede">An unofficial redesign of the Steam store and community, running on live Steam data. Use it as a Windows app or right in your browser.</p>
+          <p class="lede">An unofficial redesign of the Steam store and community, running on live Steam data. Use it as a Windows app, an Android app or right in your browser.</p>
           <div class="hero__actions">
             <a class="btn btn--primary btn--lg" href="${esc(dl.wizard.url)}">${winIcon}Download for Windows</a>
-            <a class="btn btn--ghost btn--lg" href="${WEB}">Open the web version</a>
+            <a class="btn btn--ghost btn--lg" href="${esc(dl.android.url)}">${androidIcon}Get the Android app</a>
           </div>
-          <p class="hero__meta">Version ${esc(dl.version)} · ${mb(dl.wizard.size)} setup wizard · Windows 10 and 11, 64-bit · Free</p>
+          <p class="hero__meta">Version ${esc(dl.version)} · Windows 10 and 11 · Android 7 and later · Free · <a href="${WEB}">Open the web version</a></p>
         </div>
         <figure class="hero__shot">
           <div class="window"><div class="window__bar"><span></span><span></span><span></span></div><img src="screenshots/home.jpg" width="1440" height="900" alt="The Steam Redesigned store home page, with the featured carousel and the download band"></div>
@@ -143,20 +147,21 @@ ${shots.map(([n, alt], i) => `          <figure class="shot${i === 0 ? ' shot--w
         </div>
         <div class="compare">
           <div class="compare__table">
-          <h3>App or website?</h3>
+          <h3>Which one?</h3>
           <table>
-            <thead><tr><th scope="col">Feature</th><th scope="col">Windows app</th><th scope="col">Website</th></tr></thead>
+            <thead><tr><th scope="col">Feature</th><th scope="col">Windows app</th><th scope="col">Android app</th><th scope="col">Website</th></tr></thead>
             <tbody>
-              <tr><th scope="row">Store, game pages, community, recommendations</th><td>Yes</td><td>Yes</td></tr>
-              <tr><th scope="row">Catalog refresh</th><td>Every 6 hours, or on demand</td><td>Daily</td></tr>
-              <tr><th scope="row">AI search with Claude</th><td>Yes, with your own API key</td><td>Built-in search only</td></tr>
-              <tr><th scope="row">Catalog size and player limit settings</th><td>Yes</td><td>No</td></tr>
-              <tr><th scope="row">System tray, notifications</th><td>Yes</td><td>No</td></tr>
-              <tr><th scope="row">Works on phones, Macs and Linux</th><td>No</td><td>Yes</td></tr>
+              <tr><th scope="row">Store, game pages, community, recommendations</th><td>Yes</td><td>Yes</td><td>Yes</td></tr>
+              <tr><th scope="row">Opens instantly, full screen</th><td>Yes</td><td>Yes</td><td>In a browser tab</td></tr>
+              <tr><th scope="row">Catalog refresh</th><td>Every 6 hours, or on demand</td><td>Daily</td><td>Daily</td></tr>
+              <tr><th scope="row">AI search with Claude</th><td>Yes, with your own API key</td><td>Built-in search</td><td>Built-in search</td></tr>
+              <tr><th scope="row">Catalog size and player limit settings</th><td>Yes</td><td>No</td><td>No</td></tr>
+              <tr><th scope="row">System tray, notifications</th><td>Yes</td><td>No</td><td>No</td></tr>
+              <tr><th scope="row">Runs on</th><td>Windows 10 and 11</td><td>Android 7 and later</td><td>Any browser</td></tr>
             </tbody>
           </table>
           </div>
-          <figure class="compare__phone"><img src="screenshots/mobile.jpg" width="780" height="1688" loading="lazy" alt="The website on a phone, offering to send the download link to a PC"><figcaption>On a phone, the website offers to send the download to your PC.</figcaption></figure>
+          <figure class="compare__phone"><img src="screenshots/android-app.jpg" width="540" height="1200" loading="lazy" alt="The Steam Redesigned Android app on a Pixel phone"><figcaption>The Android app on a Pixel 8.</figcaption></figure>
         </div>
       </div>
     </section>
@@ -164,10 +169,12 @@ ${shots.map(([n, alt], i) => `          <figure class="shot${i === 0 ? ' shot--w
     <section class="band band--dl" id="download" aria-labelledby="h-download">
       <div class="wrap">
         <h2 id="h-download">Download</h2>
-        <p class="section-lede">Version ${esc(dl.version)}, released ${esc(date)}. For Windows 10 and 11, 64-bit. Everything installs for your Windows account only and doesn't need administrator rights.</p>
+        <p class="section-lede">Version ${esc(dl.version)}, released ${esc(date)}. Free for Windows 10 and 11 (64-bit) and Android 7 and later. All files and release notes are also on the <a href="${esc(dl.release)}">GitHub release page</a>.</p>
+
+        <h3 class="platform">${winIcon}Windows</h3>
+        <p class="platform__note">Installs for your Windows account only and doesn't need administrator rights.</p>
         <div class="files">${file(dl.wizard, 'Setup wizard', 'Recommended. A small program that downloads the app, checks it hasn\'t been tampered with, and installs it.', true)}${file(dl.msi, 'Windows Installer (.msi)', 'The whole app in one Windows Installer package. Good for offline installs and IT deployment.')}${file(dl.offline, 'Offline installer (.exe)', 'The whole app in one setup file, for PCs without a fast connection.')}
         </div>
-        <p class="files__all">All files and release notes are on the <a href="${esc(dl.release)}">GitHub release page</a>.</p>
         <div class="install">
           <div>
             <h3>Installing</h3>
@@ -185,21 +192,51 @@ ${shots.map(([n, alt], i) => `          <figure class="shot${i === 0 ? ' shot--w
             <p>The result should match the checksum under the file above.</p>
           </div>
         </div>
+
+        <h3 class="platform">${androidIcon}Android</h3>
+        <p class="platform__note">The store and community as a full-screen app. Your wishlist, cart and settings stay on your phone.</p>
+        <div class="files files--one">${file(dl.android, 'Android app (.apk)', 'For Android 7 and later. Download it on your phone, then open it to install.', true)}
+        </div>
+        <div class="install">
+          <div>
+            <h3>Installing</h3>
+            <ol>
+              <li>Download the APK on your phone and open it from the notification or your Downloads.</li>
+              <li>The app isn't from the Play Store, so Android asks first. Tap <b>Settings</b>, turn on <b>Allow from this source</b> for your browser, then go back.</li>
+              <li>Tap <b>Install</b>. If Google Play Protect asks about an unknown app, choose <b>More details</b>, then <b>Install anyway</b>.</li>
+              <li>Open <b>Steam Redesigned</b> from your home screen. To remove it, press and hold the icon and choose <b>Uninstall</b>.</li>
+            </ol>
+          </div>
+          <div>
+            <h3>Check the signature</h3>
+            <p>Every version is signed with the same Project Vanguard key, so Android only installs updates that really come from this project. The key's SHA-256 fingerprint is:</p>
+            <pre><code>${esc(dl.android.cert || '')}</code></pre>
+          </div>
+        </div>
       </div>
     </section>
 
     <section class="band" id="security" aria-labelledby="h-security">
       <div class="wrap">
         <h2 id="h-security">Built to be safe to share</h2>
-        <p class="section-lede">Installing the app on another PC creates a fully independent copy. Nothing links it back to anyone else's computer.</p>
-        <div class="features">
+        <p class="section-lede">Every install is a fully independent copy. Nothing links it back to anyone else's computer or phone.</p>
+        <div class="features features--three">
           <div>
-            <h3>The app</h3>
+            <h3>The Windows app</h3>
             <ul>
               <li>No remote control, no connection between copies and no hidden updates.</li>
               <li>Its local data server only answers the PC it runs on. Other devices on the network can't reach it.</li>
               <li>Refuses debugging switches, can't be turned into a script runner, and won't start if its files were modified.</li>
               <li>Your Anthropic API key, if you add one, is encrypted with your Windows account.</li>
+            </ul>
+          </div>
+          <div>
+            <h3>The Android app</h3>
+            <ul>
+              <li>The only permission it asks for is internet access: no camera, contacts, location or storage.</li>
+              <li>Talks only to this project's read-only service and Steam's image servers, always over HTTPS.</li>
+              <li>No account and no tracking; app backups are turned off, so your data stays on the phone.</li>
+              <li>Signed with the Project Vanguard key, so nobody else can publish an update to it.</li>
             </ul>
           </div>
           <div>

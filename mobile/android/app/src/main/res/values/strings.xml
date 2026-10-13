@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Steam Redesigned</string>
+    <string name="title_activity_main">Steam Redesigned</string>
+    <string name="package_name">com.projectvanguard.steamredesigned</string>
+    <string name="custom_url_scheme">com.projectvanguard.steamredesigned</string>
+</resources>

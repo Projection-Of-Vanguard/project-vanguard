@@ -28,6 +28,7 @@ const log = (...a) => console.log(new Date().toISOString().slice(11, 19), ...a);
 // Public mode: the hosted website (Vercel). Data lives in Vercel Blob, settings that change the
 // server are switched off, and only the deployment's own domains are answered.
 const PUBLIC = process.env.PUBLIC_MODE === '1';
+const APP_ORIGIN = 'https://app.projectvanguard';
 
 const DEFAULT_CONFIG = { catalogMax: 10000, minPlayers: 100, refreshHours: 6, aiEnabled: true, aiModel: 'claude-opus-5-5' };
 const AI_MODELS = ['claude-opus-5-5', 'claude-sonnet-5-5', 'claude-haiku-5-5'];
@@ -799,7 +800,10 @@ function makeHandler(port) {
   const hosts = new Set([`localhost:${port}`, `127.0.0.1:${port}`, `[::1]:${port}`]);
   const origins = new Set([...hosts].map((h) => `http://${h}`));
   const hostOk = (host) => (PUBLIC ? /^[a-z0-9.-]{1,253}$/.test(host) : hosts.has(host));
-  const originOk = (origin, host) => (PUBLIC ? origin === `https://${host}` : origins.has(origin));
+  // The Android app bundles the interface and calls the hosted API from its own fixed origin.
+  // ".projectvanguard" is not a real top-level domain, so no website can send this origin.
+  const fromApp = (origin) => PUBLIC && origin === APP_ORIGIN;
+  const originOk = (origin, host) => (PUBLIC ? origin === `https://${host}` || fromApp(origin) : origins.has(origin));
 
   return async (req, res) => {
     // DNS-rebinding protection: only answer requests addressed to this machine
@@ -817,6 +821,13 @@ function makeHandler(port) {
     const { pathname, searchParams } = url;
     const ip = PUBLIC ? String(req.headers['x-real-ip'] || req.headers['x-forwarded-for'] || 'anon').split(',')[0].trim() : req.socket.remoteAddress || 'local';
     securityHeaders(res, false);
+    if (PUBLIC) {
+      res.setHeader('Access-Control-Allow-Origin', APP_ORIGIN);
+      res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-CSRF-Token');
+      res.setHeader('Access-Control-Allow-Methods', 'GET, POST');
+      res.setHeader('Access-Control-Max-Age', '600');
+      if (req.method === 'OPTIONS') { res.writeHead(fromApp(req.headers.origin) ? 204 : 403); res.end(); return; }
+    }
 
     try {
       if (req.method === 'GET' || req.method === 'HEAD') {
@@ -831,7 +842,7 @@ function makeHandler(port) {
         }
         // Browsers send Sec-Fetch-Site; refuse API reads initiated by other websites
         const site = req.headers['sec-fetch-site'];
-        if (site && site !== 'same-origin' && site !== 'none') throw fail(403, 'Cross-site request blocked');
+        if (site && site !== 'same-origin' && site !== 'none' && !fromApp(req.headers.origin)) throw fail(403, 'Cross-site request blocked');
         let m;
         if (pathname === '/api/catalog') { if (!allow(`${ip}:catalog`, LIMITS.catalog)) throw fail(429, 'Too many requests'); return sendCatalog(req, res); }
         if (!allow(`${ip}:read`, LIMITS.read)) throw fail(429, 'Too many requests');

@@ -3,6 +3,20 @@
 (function () {
   'use strict';
 
+  // Android app: the interface is bundled in the APK and the data comes from the hosted API.
+  // tools/build-android.mjs adds <meta name="api-base"> to the app's copy of index.html.
+  var apiMeta = document.querySelector('meta[name="api-base"]');
+  if (apiMeta) {
+    var base = apiMeta.content.replace(/\/$/, '');
+    window.mobileApp = { platform: 'android', apiBase: base, version: apiMeta.dataset.version || '' };
+    document.documentElement.dataset.platform = 'android';
+    var nativeFetch = window.fetch.bind(window);
+    window.fetch = function (input, init) {
+      if (typeof input === 'string' && (input.indexOf('/api/') === 0 || input === '/downloads.json')) input = base + input;
+      return nativeFetch(input, init);
+    };
+  }
+
   var DEFAULTS = {
     // Appearance
     theme: 'navy', accent: '#1a9fff', sale: 'lime', radius: 'default', density: 'comfortable', font: 'default', scale: 100,

@@ -1,6 +1,6 @@
 {
   "version": "3.0.0",
-  "date": "2026-10-13T17:20:13.307Z",
+  "date": "2026-10-13T18:35:30.621Z",
   "release": "https://github.com/Projection-Of-Vanguard/project-vanguard/releases/tag/v3.0.0",
   "wizard": {
     "name": "Steam-Redesigned-Setup-3.0.0.exe",
@@ -19,5 +19,12 @@
     "url": "https://github.com/Projection-Of-Vanguard/project-vanguard/releases/download/v3.0.0/Steam-Redesigned-Offline-Setup-3.0.0.exe",
     "size": 114409273,
     "sha256": "26f63b7c0be7740404646b04fe931ae72072c9d15c1e050719af1ee4c12438c6"
+  },
+  "android": {
+    "name": "Steam-Redesigned-3.0.0.apk",
+    "url": "https://github.com/Projection-Of-Vanguard/project-vanguard/releases/download/v3.0.0/Steam-Redesigned-3.0.0.apk",
+    "size": 3514514,
+    "sha256": "0c710064ad380a4962a8538d8e30c3712fc1fe5ddd001a096eecec9287030d19",
+    "cert": "27:F2:C5:0D:14:62:71:AE:67:0C:5F:13:08:BA:50:EF:AD:28:1B:1C:8F:B6:F2:4B:3B:98:60:4C:D3:0A:A9:2F"
   }
 }

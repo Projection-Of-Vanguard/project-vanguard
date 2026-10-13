@@ -1,8 +1,8 @@
 # Steam Redesigned (Project Vanguard)
 
-An unofficial redesign of the Steam store and community, running on live Steam data. Use it as a Windows desktop app or in your browser (BETA VERSION!!) .
+An unofficial redesign of the Steam store and community, running on live Steam data. Use it as a Windows desktop app, an Android app or in your browser (BETA VERSION!!) .
 
-**[Website](https://projection-of-vanguard.github.io)** · **[Web version](https://projectvanguard.vercel.app)** · **[Download for Windows](https://github.com/Projection-Of-Vanguard/project-vanguard/releases/latest)**
+**[Website](https://projection-of-vanguard.github.io)** · **[Web version](https://projectvanguard.vercel.app)** · **[Download for Windows and Android](https://github.com/Projection-Of-Vanguard/project-vanguard/releases/latest)**
 
 ![The Steam Redesigned Windows app](pages/screenshots/app-window.jpg)
 
@@ -14,32 +14,36 @@ An unofficial redesign of the Steam store and community, running on live Steam d
 
 ## Download
 
-Get the latest version from the **[releases page](https://github.com/Projection-Of-Vanguard/project-vanguard/releases/latest)**. It runs on Windows 10 and 11 (64-bit).
+Get the latest version from the **[releases page](https://github.com/Projection-Of-Vanguard/project-vanguard/releases/latest)**. The Windows app runs on Windows 10 and 11 (64-bit), the Android app on Android 7 and later.
 
 | File | What it is |
 |---|---|
 | `Steam-Redesigned-Setup-<version>.exe` | **Recommended.** A setup wizard under 1 MB. It downloads the app package from the release, checks its SHA-512 against the value built into the wizard, and installs. A package that fails the check is removed. |
 | `Steam-Redesigned-<version>.msi` | Windows Installer package of the full app. |
 | `Steam-Redesigned-Offline-Setup-<version>.exe` | Full app in one setup file, no download needed. |
-| `steam-redesigned-<version>-x64.nsis.7z` | The package the wizard downloads. You don't need it yourself. |
+| `Steam-Redesigned-<version>.apk` | **Android app.** Open it on your phone and allow installs from your browser when Android asks. |
+| `steam-redesigned-<version>-x64.nsis.7z` | The package the Windows wizard downloads. You don't need it yourself. |
 | `SHA256SUMS.txt` | Checksums of all of the above. |
 
-- All installers are per-user and need no administrator rights. They add Desktop and Start menu shortcuts and uninstall cleanly from Windows Settings › Apps.
+- The Windows installers are per-user and need no administrator rights. They add Desktop and Start menu shortcuts and uninstall cleanly from Windows Settings › Apps.
 - The installers aren't code-signed yet, because that needs a paid certificate. Windows SmartScreen will show "Windows protected your PC": choose **More info**, then **Run anyway**.
 - Check a file is untouched with `certutil -hashfile <file> SHA256` and compare the result with `SHA256SUMS.txt`.
 
-On a phone, a Mac or Linux, use the [web version](https://projectvanguard.vercel.app). It has the same store, game pages, community and recommendations.
+- The Android app isn't from the Play Store, so the first time Android asks you to allow installs from your browser: tap **Settings**, turn on **Allow from this source**, then **Install**. If Play Protect asks, choose **More details**, then **Install anyway**.
 
-## App or website?
+On an iPhone, a Mac or Linux, use the [web version](https://projectvanguard.vercel.app). It has the same store, game pages, community and recommendations.
 
-| | Windows app | Website |
-|---|---|---|
-| Store, game pages, community, recommendations | Yes | Yes |
-| Catalog refresh | Every 6 hours, or on demand | Daily |
-| AI search with Claude | Yes, with your own Anthropic API key | Built-in search only |
-| Catalog size and player limit settings | Yes | No |
-| System tray and notifications | Yes | No |
-| Phones, Macs and Linux | No | Yes |
+## Which one?
+
+| | Windows app | Android app | Website |
+|---|---|---|---|
+| Store, game pages, community, recommendations | Yes | Yes | Yes |
+| Opens instantly, full screen | Yes | Yes | In a browser tab |
+| Catalog refresh | Every 6 hours, or on demand | Daily | Daily |
+| AI search with Claude | Yes, with your own Anthropic API key | Built-in search | Built-in search |
+| Catalog size and player limit settings | Yes | No | No |
+| System tray and notifications | Yes | No | No |
+| Runs on | Windows 10 and 11 | Android 7 and later | Any browser |
 
 ## Features
 
@@ -87,6 +91,12 @@ Every install is fully independent. There is no connection between copies, no re
 - An Anthropic API key, if you add one, is encrypted with your Windows account.
 - Installed builds quit when started with debugging flags, have Electron fuses off for Run-as-Node, `NODE_OPTIONS` and `--inspect`, load only from the packaged archive, and refuse to start if that archive was modified.
 
+**The Android app**
+- Built with Capacitor from the same interface, bundled inside the APK. It gets its data from the website's read-only API.
+- The only permission is internet access. App backups and plain HTTP are turned off, and WebView debugging is off in release builds.
+- The API accepts the app's fixed origin (`https://app.projectvanguard`), which no website can use, and nothing else from outside the site.
+- Signed with the Project Vanguard key (kept out of the repository), so only this project can publish updates to it.
+
 **The website**
 - Read-only. Settings, the API key and manual refresh are desktop-only; the server answers those requests with 403.
 - Holds no Anthropic key. Its storage token and cron secret are Vercel environment variables, never in the repository.
@@ -116,6 +126,8 @@ That starts the desktop app. To use it in a browser instead, run `node server.mj
 4. `node tools/build-pages.mjs` rebuilds the GitHub Pages site in `pages/`.
 5. `node tools/build-web.mjs`, then `vercel deploy --prod` from `web/`, publishes the web version.
 
+Step 2b, the Android app: `node tools/build-android.mjs` builds `dist/android/Steam-Redesigned-<version>.apk`. It needs JDK 21, the Android SDK (platform 36) and the signing key in `mobile/signing/` (not in the repository; keep a backup, because updates must be signed with the same key). Run it before step 3, which uploads the APK with the Windows installers.
+
 ## Folder
 
 | Path | What it is |
@@ -124,7 +136,8 @@ That starts the desktop app. To use it in a browser instead, run `node server.mj
 | `server.mjs` | Data server: local in the app, and the website's API in public mode |
 | `index.html`, `styles.css`, `js/` | Interface |
 | `assets/` | Icon, fonts, installer artwork and the wizard's integrity check (`installer.nsh`) |
-| `tools/` | Installer build, publishing, website and GitHub Pages assembly, fuse hook, icon, fonts, shortcuts |
+| `tools/` | Windows and Android builds, publishing, website and GitHub Pages assembly, fuse hook, icons, fonts, shortcuts |
+| `mobile/` | The Android app: Capacitor config and the native Android project |
 | `pages/` | The GitHub Pages site and screenshots |
 
 Not in the repository: `data/` (each PC's catalog, history, cache and settings), `dist/` (built installers) and `web/` (generated by `tools/build-web.mjs`).

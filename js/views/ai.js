@@ -48,7 +48,7 @@ function resultsHTML(state) {
     </div>
     <div class="ai__chips">${chips(intent)}</div>
     ${!online && status !== 409 && reason ? `<div class="ai__banner"><span>${esc(reason)} Showing offline results.</span></div>` : ''}
-    ${!online && status === 409 && document.documentElement.dataset.site === 'public' ? '<div class="ai__banner"><span>The website uses the built-in search parser. In the desktop app, Claude can understand longer, looser requests with your own API key.</span><a class="btn btn--ghost btn--sm" href="#/download">Get the app</a></div>' : ''}
+    ${!online && status === 409 && document.documentElement.dataset.site === 'public' ? `<div class="ai__banner"><span>${window.mobileApp ? 'The Android app uses the built-in search parser. On a Windows PC, the desktop app can use Claude for longer, looser requests with your own API key.' : 'The website uses the built-in search parser. In the desktop app, Claude can understand longer, looser requests with your own API key.'}</span><a class="btn btn--ghost btn--sm" href="#/download">Get the app</a></div>` : ''}
     ${!online && status === 409 && document.documentElement.dataset.site !== 'public' ? '<div class="ai__banner"><span>Add an Anthropic API key to let Claude understand longer, looser requests. These results come from the offline parser.</span><button type="button" class="btn btn--ghost btn--sm" data-open-ai>Set up AI search</button></div>' : ''}
     ${results.length
       ? `<p class="muted" style="margin-top:18px">${results.length} games</p><div class="ai__results">${results.map(({ g, why }) => capHTML(g, { sub: false, why })).join('')}</div>`

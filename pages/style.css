@@ -150,3 +150,13 @@ code, pre { font-family: ui-monospace, "Cascadia Code", Consolas, monospace; fon
   html { scroll-behavior: auto; }
   *, *::before, *::after { transition: none !important; }
 }
+
+/* Download: one block per platform */
+.platform { display: flex; align-items: center; gap: 10px; margin-top: 40px; font-size: 26px; font-weight: 700; }
+.platform .i { width: 24px; height: 24px; color: var(--glacier); }
+.platform__note { margin: 8px 0 0; color: var(--text-2); }
+.files--one { grid-template-columns: minmax(0, 520px); }
+.hero__meta a { color: var(--glacier); }
+.features--three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.install pre code { white-space: pre-wrap; word-break: break-all; }
+@media (max-width: 960px) { .features--three { grid-template-columns: 1fr; } }

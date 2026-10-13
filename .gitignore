@@ -13,3 +13,12 @@ web/
 .playwright-mcp/
 *.lnk
 *.log
+# Android app: dependencies, generated web copy, build output and the private signing key
+mobile/node_modules/
+mobile/www/
+mobile/signing/
+mobile/android/app/build/
+mobile/android/build/
+mobile/android/.gradle/
+mobile/android/app/src/main/assets/public/
+mobile/android/local.properties

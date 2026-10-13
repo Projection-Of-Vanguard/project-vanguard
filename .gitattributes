@@ -4,3 +4,6 @@
 *.ico binary
 *.bmp binary
 *.woff2 binary
+*.bat text eol=crlf
+*.jar binary
+*.jks binary

@@ -919,9 +919,9 @@ main:focus { outline: none; }
   .row__meta { display: none; }
   .section { margin-top: 48px; }
   .section-head { flex-wrap: wrap; }
-  .grid-caps { grid-template-columns: 1fr 1fr; }
+  .grid-caps { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .media__strip { grid-auto-columns: 30%; }
-  .results { grid-template-columns: 1fr 1fr; gap: 14px 10px; }
+  .results { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 10px; }
   .footer__grid { grid-template-columns: 1fr 1fr; }
   .detail__actions p { flex-basis: 100%; }
 }
@@ -1516,7 +1516,10 @@ html.is-app { --topbar-h: 152px; }
   .settings__shell { grid-template-columns: 1fr; grid-template-rows: auto 1fr; border-radius: 0; }
   .settings__nav { flex-direction: row; flex-wrap: nowrap; overflow-x: auto; padding: 10px; border-right: 0; border-bottom: 1px solid var(--line); }
   .settings__nav h2, .settings__find, .settings__navfoot { display: none; }
-  .settings__tab { width: auto; white-space: nowrap; }
+  .settings__tab { width: auto; white-space: nowrap; flex: none; padding: 8px 12px; }
+  .settings__nav nav { display: flex; gap: 6px; }
+  .settings__nav { scrollbar-width: none; scroll-padding-inline: 10px; }
+  .settings__tab[aria-selected="true"]::before { left: 12px; right: 12px; top: auto; bottom: 0; width: auto; height: 3px; }
   .set-row { grid-template-columns: 1fr; }
   .set-range { min-width: 0; }
   .search__ai span { display: none; }
@@ -1808,7 +1811,7 @@ html[data-motion="off"] .getapp::after { animation: none; }
 .dl-grid { display: grid; grid-template-columns: 1.3fr 1fr 1fr; gap: 14px; margin-top: 24px; }
 .dl-card { display: grid; gap: 10px; align-content: start; padding: 22px; border-radius: var(--r-xl); background: rgba(var(--ink2-rgb), .6); box-shadow: inset 0 0 0 1px var(--line); }
 .dl-card--main { background: radial-gradient(120% 140% at 0% 0%, rgba(var(--accent-rgb), .28), transparent 60%), rgba(var(--ink2-rgb), .75); box-shadow: inset 0 0 0 1px var(--line-2); }
-.dl-card h2 { font: 600 20px/1.2 var(--font-display); }
+.dl-card h2, .dl-card h3 { font: 600 20px/1.2 var(--font-display); }
 .dl-card p { color: var(--text-2); font-size: 14px; }
 .dl-card .btn { justify-self: start; }
 .dl-card__meta { color: var(--text-3) !important; font-size: 12.5px !important; }
@@ -1816,7 +1819,7 @@ html[data-motion="off"] .getapp::after { animation: none; }
 .dl-card__hash code { display: block; margin-top: 6px; padding: 8px 10px; border-radius: 8px; background: rgba(var(--ink0-rgb), .6); font-size: 11.5px; word-break: break-all; color: var(--text-2); }
 .dl-info { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 14px; }
 .dl-info > div { padding: 22px; border-radius: var(--r-xl); background: rgba(var(--ink2-rgb), .45); box-shadow: inset 0 0 0 1px var(--line); }
-.dl-info h2 { font: 600 18px/1.2 var(--font-display); margin-bottom: 10px; }
+.dl-info h2, .dl-info h3 { font: 600 18px/1.2 var(--font-display); margin-bottom: 10px; }
 .dl-info ol, .dl-info ul { padding-left: 18px; display: grid; gap: 8px; color: var(--text-2); font-size: 14px; }
 .dl-info ol { list-style: decimal; }
 .dl-info ul { list-style: disc; }
@@ -1827,7 +1830,7 @@ html[data-motion="off"] .getapp::after { animation: none; }
   .getapp { grid-template-columns: 1fr; }
   .getapp__mark { display: none; }
   .getapp__actions { justify-items: start; text-align: left; }
-  .dl-grid, .dl-info { grid-template-columns: 1fr; }
+  .dl-grid, .dl-info { grid-template-columns: minmax(0, 1fr); }
   .brand__tag { display: none; }
 }
 
@@ -1849,3 +1852,23 @@ html[data-motion="off"] .getapp::after { animation: none; }
 .appbar__menu { min-width: 0; overflow: hidden; }
 @media (max-width: 1100px) { .appbar__title { display: none; } }
 @media (max-width: 760px) { .appbar__menu a[href="#/recommendations"], .appbar__menu a[href="#/ai"] { display: none; } }
+/* Download page: one block per platform */
+.dl-platform { margin-top: 34px; }
+.dl-platform__title { display: flex; align-items: center; gap: 10px; font: 700 26px/1.1 var(--font-display); }
+.dl-platform__title .os { width: 24px; height: 24px; }
+.dl-platform .dl-grid { margin-top: 16px; }
+.dl-grid--one { grid-template-columns: minmax(0, 1fr) !important; max-width: 560px; }
+.getapp__kicker .os + .os { margin-left: -2px; }
+
+/* Phones: the results toolbar stacks (count, then a full-width filter and sort row) */
+@media (max-width: 560px) {
+  .toolbar { flex-wrap: wrap; }
+  .toolbar__right { flex: 1 1 100%; min-width: 0; }
+  .toolbar__right .mini-search { flex: 1 1 160px; min-width: 0; }
+  .toolbar__right .mini-search input { width: 100%; min-width: 0; }
+  .toolbar__right > label:last-child { display: flex; align-items: center; gap: 8px; flex: 1 1 100%; }
+  .toolbar__right .select { flex: 1; min-width: 0; }
+  .cap__title, .cap h3 { overflow-wrap: anywhere; }
+}
+.dl-card { min-width: 0; }
+.dl-card .btn { white-space: normal; overflow-wrap: anywhere; text-align: left; }

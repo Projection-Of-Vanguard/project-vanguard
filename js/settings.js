@@ -174,7 +174,7 @@ async function aiPane() {
   const s = await getSession(true);
   const c = s.config;
   if (c.publicSite) {
-    return `<div class="set-group"><p class="set-note">On the website, Ask AI uses the built-in offline smart search, so no account or key is needed. The desktop app can also use Claude with your own Anthropic API key, stored encrypted on your PC.</p>
+    return `<div class="set-group"><p class="set-note">${window.mobileApp ? 'In the Android app' : 'On the website'}, Ask AI uses the built-in offline smart search, so no account or key is needed. The desktop app can also use Claude with your own Anthropic API key, stored encrypted on your PC.</p>
       <div class="set-row"><div><p class="set-row__label">Get the desktop app</p><p class="set-row__desc">Free download for Windows 10 and 11.</p></div><a class="btn btn--primary btn--sm" href="#/download" data-close-settings>Download</a></div></div>`;
   }
   const status = c.aiConfigured
@@ -204,7 +204,7 @@ async function catalogPane() {
   try { status = await fetch('/api/status', { cache: 'no-store' }).then((r) => r.json()); } catch { /* offline */ }
   const removed = status.changes?.removed || [];
   if (c.publicSite) {
-    return `<div class="set-group"><h4>Status</h4><div class="set-row"><div><p class="set-row__label">${(status.count || db.all.length).toLocaleString('en-US')} games tracked</p><p class="set-row__desc">The website's catalog updates once a day${status.updated ? `, last ${ago(status.updated * 1000)}` : ''}. The desktop app updates every 6 hours and on demand.</p></div></div></div>` + deviceData();
+    return `<div class="set-group"><h4>Status</h4><div class="set-row"><div><p class="set-row__label">${(status.count || db.all.length).toLocaleString('en-US')} games tracked</p><p class="set-row__desc">${window.mobileApp ? 'The catalog' : "The website's catalog"} updates once a day${status.updated ? `, last ${ago(status.updated * 1000)}` : ''}. The desktop app updates every 6 hours and on demand.</p></div></div></div>` + deviceData();
   }
   return `<div class="set-group"><h4>Status</h4>
     <div class="set-row"><div><p class="set-row__label">${(status.count || db.all.length).toLocaleString('en-US')} games tracked</p>
@@ -249,7 +249,7 @@ async function appPane() {
 }
 
 function aboutPane() {
-  return `<div class="about-mark">${document.querySelector('.brand__mark')?.outerHTML || ''}<div><h4>Steam Redesigned</h4><p class="muted">Project Vanguard</p><p class="muted">Version ${esc(window.desktop?.version || '2.0.0')}${window.desktop ? ' · Desktop app' : ' · Browser'}</p></div></div>
+  return `<div class="about-mark">${document.querySelector('.brand__mark')?.outerHTML || ''}<div><h4>Steam Redesigned</h4><p class="muted">Project Vanguard</p><p class="muted">Version ${esc(window.desktop?.version || window.mobileApp?.version || '3.0.0')}${window.desktop ? ' · Desktop app' : window.mobileApp ? ' · Android app' : ' · Browser'}</p></div></div>
   <p class="set-note">An unofficial concept. Game names, art, prices and community posts come from the public Steam store and Steam Community and belong to their owners. Catalog of ${db.all.length.toLocaleString('en-US')} games, updated ${ago(db.updated)}.</p>
   <div class="set-group"><h4>Keyboard shortcuts</h4><div class="kbd-list">
     <kbd>/</kbd><span>Search the store</span>
