@@ -5,15 +5,28 @@
 
   // Android app: the interface is bundled in the APK and the data comes from the hosted API.
   // tools/build-android.mjs adds <meta name="api-base"> to the app's copy of index.html.
+  // A home server (ProjectServer on a PC on the same Wi-Fi) replaces it when it answers; away from
+  // home, or if it's off, the app quietly uses the hosted API for that session.
   var apiMeta = document.querySelector('meta[name="api-base"]');
   if (apiMeta) {
-    var base = apiMeta.content.replace(/\/$/, '');
-    window.mobileApp = { platform: 'android', apiBase: base, version: apiMeta.dataset.version || '' };
+    var online = apiMeta.content.replace(/\/$/, '');
+    var home = null;
+    try { home = localStorage.getItem('st-home-server'); } catch (e) { /* storage off */ }
+    if (!/^https?:\/\/[a-z0-9.-]+(:\d{1,5})?$/i.test(home || '')) home = null;
+    var app = window.mobileApp = { platform: 'android', apiBase: online, onlineBase: online, homeServer: home, usingHome: false, imgBase: null, version: apiMeta.dataset.version || '' };
     document.documentElement.dataset.platform = 'android';
+    // The home server speaks plain http on the LAN, which this https page may not load directly
+    // (mixed content), so the app fetches it natively through /_home/ (see HomeServerProxy.java).
+    app.homePath = function (url) { return '/_home/' + url.replace('://', '/'); };
     var nativeFetch = window.fetch.bind(window);
+    var homeBase = home && app.homePath(home);
+    app.ready = !home ? Promise.resolve() : nativeFetch(homeBase + '/api/status', { cache: 'no-store', signal: AbortSignal.timeout(2500) })
+      .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); app.apiBase = homeBase; app.usingHome = true; app.imgBase = homeBase + '/img'; })
+      .catch(function () { /* not reachable: stay online */ });
     window.fetch = function (input, init) {
-      if (typeof input === 'string' && (input.indexOf('/api/') === 0 || input === '/downloads.json')) input = base + input;
-      return nativeFetch(input, init);
+      if (typeof input !== 'string' || !(input.indexOf('/api/') === 0 || input === '/downloads.json')) return nativeFetch(input, init);
+      var rel = input;
+      return app.ready.then(function () { return nativeFetch((rel === '/downloads.json' ? app.onlineBase : app.apiBase) + rel, init); });
     };
   }
 
@@ -27,6 +40,8 @@
     autoplay: true, autoplaySec: 7, parallax: true, shimmer: true,
     // Store
     hideAdult: true, hideOwned: true, hideIgnored: true, players: true, personalize: true, defaultSort: 'rel', saleAlerts: true,
+    // Phone notifications from the deal feed (checked about every hour)
+    notifyFree: true, notifyDeals: true,
     // Community
     textPosts: true, communityHover: 'inherit', feedIn: 'cascade', viewerAnim: 'zoom', commentsAnim: 'expand',
     // Notifications

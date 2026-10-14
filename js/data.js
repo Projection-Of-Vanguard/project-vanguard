@@ -2,7 +2,9 @@
 
 import { state } from './state.js';
 
+// Store images; through the home server's photo cache when the phone app uses one (set in boot.js)
 const CDN = 'https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/';
+const cdn = () => (window.mobileApp?.imgBase ? `${window.mobileApp.imgBase}/shared.akamai.steamstatic.com/store_item_assets/steam/apps/` : CDN);
 const REVIEW_LABELS = ['', 'Overwhelmingly Negative', 'Very Negative', 'Negative', 'Mostly Negative', 'Mixed', 'Mostly Positive', 'Positive', 'Very Positive', 'Overwhelmingly Positive'];
 
 export const db = {
@@ -16,7 +18,7 @@ export const db = {
   changes: { added: [], removed: [] },
 };
 
-const asset = (id, file) => (file ? `${CDN}${id}/${file}` : null);
+const asset = (id, file) => (file ? `${cdn()}${id}/${file}` : null);
 
 /* ------------------------------------------------------- text normalising */
 
@@ -133,7 +135,7 @@ export function searchTags(q, limit = 3) {
 /* ------------------------------------------------------------- catalog */
 
 function normalise(r) {
-  const header = asset(r.id, r.h) || `${CDN}${r.id}/header.jpg`;
+  const header = asset(r.id, r.h) || `${cdn()}${r.id}/header.jpg`;
   const g = {
     id: r.id,
     name: r.n,
@@ -165,7 +167,7 @@ function normalise(r) {
     capsule: asset(r.id, r.c) || header,
     hero: asset(r.id, r.hr),
     tall: asset(r.id, r.lc),
-    logo: `${CDN}${r.id}/logo.png`,
+    logo: `${cdn()}${r.id}/logo.png`,
   };
   g.label = g.reviews < 10 ? (g.reviews ? `${g.reviews} user review${g.reviews > 1 ? 's' : ''}` : 'No user reviews') : REVIEW_LABELS[g.score] || 'Mixed';
   g.quality = (g.pct / 100) * Math.min(1, Math.log10(g.reviews + 1) / 5);

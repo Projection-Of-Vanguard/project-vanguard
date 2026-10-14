@@ -1,30 +1,30 @@
 {
-  "version": "3.1.0",
-  "date": "2026-10-13T21:35:48.626Z",
-  "release": "https://github.com/Projection-Of-Vanguard/project-vanguard/releases/tag/v3.1.0",
+  "version": "3.2.0",
+  "date": "2026-10-14T10:54:22.202Z",
+  "release": "https://github.com/Projection-Of-Vanguard/project-vanguard/releases/tag/v3.2.0",
   "wizard": {
-    "name": "Steam-Redesigned-Setup-3.1.0.exe",
-    "url": "https://github.com/Projection-Of-Vanguard/project-vanguard/releases/download/v3.1.0/Steam-Redesigned-Setup-3.1.0.exe",
-    "size": 821482,
-    "sha256": "90c6df0a73ff55262d72788af38294e564eaa626d30ecaad9ef9d31bac462e64"
+    "name": "Steam-Redesigned-Setup-3.2.0.exe",
+    "url": "https://github.com/Projection-Of-Vanguard/project-vanguard/releases/download/v3.2.0/Steam-Redesigned-Setup-3.2.0.exe",
+    "size": 821471,
+    "sha256": "e7654916690621c4ea452944608ae2571fcec3f8168d2684a8b8be7d26ca2df6"
   },
   "msi": {
-    "name": "Steam-Redesigned-3.1.0.msi",
-    "url": "https://github.com/Projection-Of-Vanguard/project-vanguard/releases/download/v3.1.0/Steam-Redesigned-3.1.0.msi",
-    "size": 128917504,
-    "sha256": "6c37f0291c118a1b2f989cf6c5be504b2d48476ab7c371f16cb9d09db6635f39"
+    "name": "Steam-Redesigned-3.2.0.msi",
+    "url": "https://github.com/Projection-Of-Vanguard/project-vanguard/releases/download/v3.2.0/Steam-Redesigned-3.2.0.msi",
+    "size": 128937984,
+    "sha256": "d9f1354e6af40880b5c860cd362e3961420e8e3fdf2bc5b036d9abe2a8325e05"
   },
   "offline": {
-    "name": "Steam-Redesigned-Offline-Setup-3.1.0.exe",
-    "url": "https://github.com/Projection-Of-Vanguard/project-vanguard/releases/download/v3.1.0/Steam-Redesigned-Offline-Setup-3.1.0.exe",
-    "size": 114538195,
-    "sha256": "970026b68aa836324c2932539889e1cfa295a0f6882e1ccf1d372f0a0eab47b1"
+    "name": "Steam-Redesigned-Offline-Setup-3.2.0.exe",
+    "url": "https://github.com/Projection-Of-Vanguard/project-vanguard/releases/download/v3.2.0/Steam-Redesigned-Offline-Setup-3.2.0.exe",
+    "size": 114544979,
+    "sha256": "300fffd4aea3780364120c520cd35b54b1b15cdf4e5b1b47cdb64ff4c228485f"
   },
   "android": {
-    "name": "Steam-Redesigned-3.1.0.apk",
-    "url": "https://github.com/Projection-Of-Vanguard/project-vanguard/releases/download/v3.1.0/Steam-Redesigned-3.1.0.apk",
-    "size": 3845095,
-    "sha256": "5666b66742049d3a94b4e25f3f0d363241b58686460b6d71bdf83f6104a26c83",
+    "name": "Steam-Redesigned-3.2.0.apk",
+    "url": "https://github.com/Projection-Of-Vanguard/project-vanguard/releases/download/v3.2.0/Steam-Redesigned-3.2.0.apk",
+    "size": 3851471,
+    "sha256": "64d6ea7323fdf5aa096ac4f99446d86b176f940daca45e9c231ce9531efb77f9",
     "cert": "27:F2:C5:0D:14:62:71:AE:67:0C:5F:13:08:BA:50:EF:AD:28:1B:1C:8F:B6:F2:4B:3B:98:60:4C:D3:0A:A9:2F"
   }
 }

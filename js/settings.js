@@ -64,6 +64,8 @@ const SECTIONS = [
   { id: 'notifications', label: 'Notifications', icon: 'bell', desc: 'Pop-up messages', rows: [
     { key: 'toastPos', type: 'seg', label: 'Position', options: [['bottom-center', 'Bottom'], ['bottom-right', 'Bottom right'], ['top-right', 'Top right'], ['top-center', 'Top']] },
     { key: 'toastSec', type: 'range', label: 'Show for', min: 2, max: 10, step: 1, unit: ' s', test: true },
+    { key: 'notifyFree', type: 'toggle', label: 'New free games', desc: 'Android app: a notification when a game becomes free to keep. Checked about every hour.' },
+    { key: 'notifyDeals', type: 'toggle', label: 'Big deals', desc: 'Android app: a notification when a popular game, or one on your wishlist, drops 50% or more.' },
   ] },
   { id: 'accessibility', label: 'Accessibility', icon: 'eye', desc: 'Readability and focus', rows: [
     { key: 'contrast', type: 'toggle', label: 'Higher contrast text', desc: 'Brighter secondary text and borders.' },
@@ -197,6 +199,22 @@ async function aiPane() {
   </div>`;
 }
 
+/** Android app: a PC running ProjectServer on the same Wi-Fi serves data, photos and deal notifications. */
+function homeServerBlock() {
+  const a = window.mobileApp;
+  if (!a) return '';
+  const status = a.usingHome ? `<span class="set-status set-status--ok">${icon('check', 'i i--sm')}Connected to ${esc(a.homeServer)}</span>`
+    : a.homeServer ? '<span class="set-status set-status--warn">Not reachable right now, so the online service is used</span>' : '';
+  return `<div class="set-group"><h4>Home server</h4>
+    <div class="set-row set-row--block"><div><p class="set-row__label">Home server address</p><p class="set-row__desc">A PC on your Wi-Fi running the Project Vanguard home server keeps games, details and photos ready for this phone, refreshes them every hour and sends free game and deal notifications. Enter the address its window shows. Away from home, the app uses the online service.</p></div>${status}
+      <form class="set-input" data-home-form autocomplete="off">
+        <label class="sr-only" for="home-url">Home server address</label>
+        <input id="home-url" type="text" inputmode="url" placeholder="http://192.168.1.50:8787" value="${esc(a.homeServer || '')}" spellcheck="false" autocapitalize="off">
+        <button type="submit" class="btn btn--primary btn--sm">Connect</button>
+        ${a.homeServer ? '<button type="button" class="btn btn--ghost btn--sm" data-home-clear>Use online service</button>' : ''}
+      </form></div></div>`;
+}
+
 async function catalogPane() {
   const s = await getSession(true);
   const c = s.config;
@@ -204,7 +222,7 @@ async function catalogPane() {
   try { status = await fetch('/api/status', { cache: 'no-store' }).then((r) => r.json()); } catch { /* offline */ }
   const removed = status.changes?.removed || [];
   if (c.publicSite) {
-    return `<div class="set-group"><h4>Status</h4><div class="set-row"><div><p class="set-row__label">${(status.count || db.all.length).toLocaleString('en-US')} games tracked</p><p class="set-row__desc">${window.mobileApp ? 'The catalog' : "The website's catalog"} updates once a day${status.updated ? `, last ${ago(status.updated * 1000)}` : ''}. The desktop app updates every 6 hours and on demand.</p></div></div></div>` + deviceData();
+    return `<div class="set-group"><h4>Status</h4><div class="set-row"><div><p class="set-row__label">${(status.count || db.all.length).toLocaleString('en-US')} games tracked</p><p class="set-row__desc">${c.homeServer ? `The catalog comes from your home server, which updates it every ${c.refreshHours === 1 ? 'hour' : `${c.refreshHours} hours`}` : `${window.mobileApp ? 'The catalog' : "The website's catalog"} updates once a day`}${status.updated ? `, last ${ago(status.updated * 1000)}` : ''}.${c.homeServer ? '' : ' The desktop app updates every 6 hours and on demand.'}</p></div></div></div>` + homeServerBlock() + deviceData();
   }
   return `<div class="set-group"><h4>Status</h4>
     <div class="set-row"><div><p class="set-row__label">${(status.count || db.all.length).toLocaleString('en-US')} games tracked</p>
@@ -340,6 +358,12 @@ function build() {
       try { await post('/api/config', { [key]: value }); toast(key === 'minPlayers' || key === 'catalogMax' ? 'Saved. The catalog is updating in the background' : 'Saved'); } catch (err) { toast(err.message); }
       return render(false);
     }
+    if (t.closest('[data-home-clear]')) {
+      try { localStorage.removeItem('st-home-server'); } catch { /* storage off */ }
+      toast('Using the online service. Restarting the app');
+      setTimeout(() => location.reload(), 900);
+      return;
+    }
     if (t.closest('[data-key-remove]')) { try { await post('/api/ai-key', { key: null }); toast('API key removed'); } catch (err) { toast(err.message); } return render(false); }
     if (t.closest('[data-refresh]')) { try { await post('/api/refresh', {}); toast('Updating the catalog in the background'); } catch (err) { toast(err.message); } return render(false); }
     const clr = t.closest('[data-clear]');
@@ -382,6 +406,26 @@ function build() {
     }
   });
   dialog.addEventListener('submit', async (e) => {
+    if (e.target.matches('[data-home-form]')) {
+      e.preventDefault();
+      const input = $('#home-url', dialog);
+      let url = input.value.trim().replace(/\/+$/, '');
+      if (url && !/^https?:\/\//i.test(url)) url = `http://${url}`;
+      if (!/^https?:\/\/[a-z0-9.-]+(:\d{1,5})?$/i.test(url)) { toast('Enter the address the server shows, like http://192.168.1.50:8787'); return; }
+      const btn = $('button[type="submit"]', e.target);
+      btn.disabled = true; btn.textContent = 'Checking…';
+      try {
+        const st = await fetch(`${window.mobileApp.homePath(url)}/api/session`,{ cache: 'no-store', signal: AbortSignal.timeout(5000) }).then((r) => r.json());
+        if (!st?.config?.homeServer) throw new Error('not a home server');
+        try { localStorage.setItem('st-home-server', url); } catch { /* storage off */ }
+        toast('Connected. Restarting the app to use your home server');
+        setTimeout(() => location.reload(), 900);
+      } catch {
+        btn.disabled = false; btn.textContent = 'Connect';
+        toast("Couldn't reach a home server at that address. Check the phone is on the same Wi-Fi and the server window is open.");
+      }
+      return;
+    }
     if (!e.target.matches('[data-key-form]')) return;
     e.preventDefault();
     const input = $('#ai-key', dialog);

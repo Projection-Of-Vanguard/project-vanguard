@@ -45,6 +45,17 @@ On an iPhone, a Mac or Linux, use the [web version](https://projectvanguard.verc
 | System tray and notifications | Yes | No | No |
 | Runs on | Windows 10 and 11 | Android 7 and later | Any browser |
 
+## Home server (optional, for the Android app)
+
+Run the data server on a spare PC at home, and phones on the same Wi-Fi get games, details and photos from it instead of the internet. It refreshes the catalog every hour, keeps details and photos on its own disk, and watches for free games and big discounts, which the phones turn into notifications. Away from home, or when it's off, the app quietly uses the online service.
+
+1. Build it with `node tools/build-home-server.mjs`. It creates a `ProjectServer` folder next to this one; copy that folder to the PC.
+2. On that PC, install [Node.js](https://nodejs.org) 22 or later and double-click **Start Server.bat**. The window shows the address to use, like `http://192.168.1.50:8787`.
+3. Once, as administrator, run `allow-phones-firewall.ps1` so phones can reach it. Optionally run `install-autostart.ps1` to start it at logon.
+4. In the phone app: **Settings > Catalog & data > Home server**, enter the address and tap **Connect**.
+
+`config.json` sets the port, how often it refreshes and how much disk the photo cache may use (4 GB by default). The folder's `README.md` has the details.
+
 ## Features
 
 **Store**
@@ -52,7 +63,8 @@ On an iPhone, a Mac or Linux, use the [web version](https://projectvanguard.verc
 - **Update now** (top bar, title bar or tray) refreshes immediately with a progress ring.
 - Official **Windows, Apple, Linux and Steam Deck logos** next to every game name.
 - Live player counts, plus price and player history charts with the lowest recorded price.
-- **Price alerts** on wishlisted games: when a game reaches your price you get a Windows notification, an Android notification (checked in the background about every 4 hours, even with the app closed) or a browser notification. Plus **compare** up to four games side by side.
+- **Price alerts** on wishlisted games: when a game reaches your price you get a Windows notification, an Android notification (checked in the background about every hour, even with the app closed) or a browser notification. Plus **compare** up to four games side by side.
+- **Deal notifications** on Android: games that turn free to keep, and big discounts (50% or more) on popular games and your wishlist. Each can be turned off in Settings > Notifications.
 - A **release calendar**, review filters (most helpful or recent, positive or negative) and fuzzy search with **AI search**.
 
 **Recommendations** (the Recommendations menu, or "For you" in the title bar)
@@ -92,10 +104,16 @@ Every install is fully independent. There is no connection between copies, no re
 - Installed builds quit when started with debugging flags, have Electron fuses off for Run-as-Node, `NODE_OPTIONS` and `--inspect`, load only from the packaged archive, and refuse to start if that archive was modified.
 
 **The Android app**
-- Built with Capacitor from the same interface, bundled inside the APK. It gets its data from the website's read-only API.
-- The only permission is internet access. App backups and plain HTTP are turned off, and WebView debugging is off in release builds.
+- Built with Capacitor from the same interface, bundled inside the APK. It gets its data from the website's read-only API, or from your home server when you connect one.
+- Permissions: internet access and notifications. App backups are off and WebView debugging is off in release builds.
+- The page itself never loads plain HTTP. Home server requests go through a small native proxy that only passes GET requests for JSON data and photos from the address you entered: no pages, scripts or redirects.
 - The API accepts the app's fixed origin (`https://app.projectvanguard`), which no website can use, and nothing else from outside the site.
 - Signed with the Project Vanguard key (kept out of the repository), so only this project can publish updates to it.
+
+**The home server**
+- Read-only, like the website: no settings, keys or refresh requests from the network (403).
+- Meant for your home network: the firewall rule it adds only opens its port on networks Windows marks as Private. It refuses reads from other websites and rate-limits every endpoint group.
+- The photo proxy only fetches Steam's own image hosts, only stores images (up to 15 MB each), and is capped at the size you set.
 
 **The website**
 - Read-only. Settings, the API key and manual refresh are desktop-only; the server answers those requests with 403.
@@ -126,7 +144,9 @@ That starts the desktop app. To use it in a browser instead, run `node server.mj
 4. `node tools/build-pages.mjs` rebuilds the GitHub Pages site in `pages/`.
 5. `node tools/build-web.mjs`, then `vercel deploy --prod` from `web/`, publishes the web version.
 
-Step 2b, the Android app: `node tools/build-android.mjs` builds `dist/android/Steam-Redesigned-<version>.apk`. It needs JDK 21, the Android SDK (platform 36) and the signing key in `mobile/signing/` (not in the repository; keep a backup, because updates must be signed with the same key). Run it before step 3, which uploads the APK with the Windows installers.
+Step 2b, the Android app: `node tools/build-android.mjs` builds `dist/android/Steam-Redesigned-<version>.apk`. It needs JDK 21, the Android SDK (platform 36) and the signing key in `mobile/signing/` (not in the repository; keep a backup, because updates must be signed with the same key). Run it after step 2 (which empties `dist/`) and before step 3, which uploads the APK with the Windows installers.
+
+Step 6, the home server: `node tools/build-home-server.mjs` refreshes the `ProjectServer` folder next to this one (it keeps that folder's `config.json` and data).
 
 ## Folder
 

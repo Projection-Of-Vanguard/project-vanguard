@@ -12,6 +12,9 @@ public class MainActivity extends BridgeActivity {
     public void onCreate(Bundle savedInstanceState) {
         registerPlugin(PriceAlertsPlugin.class);
         super.onCreate(savedInstanceState);
+        // Home server data and photos reach the page through /_home/ (see HomeServerProxy)
+        HomeServerProxy.installCache(getApplicationContext());
+        getBridge().setWebViewClient(new HomeServerProxy(getBridge()));
         openGameFrom(getIntent());
     }
 

@@ -37,7 +37,21 @@ public class PriceAlertsPlugin extends Plugin {
             call.reject("Invalid alert list");
             return;
         }
-        getContext().getSharedPreferences(PriceAlertChecker.PREFS, android.content.Context.MODE_PRIVATE).edit().putString("targets", clean.toString()).apply();
+        // Wishlist (for deals), home server address and which notifications are wanted
+        org.json.JSONArray wishlist = new org.json.JSONArray();
+        try {
+            org.json.JSONArray in = new org.json.JSONArray(call.getString("wishlist", "[]"));
+            for (int i = 0; i < in.length() && wishlist.length() < 100; i++) { long id = in.optLong(i, -1); if (id > 0 && id < 100000000L) wishlist.put(id); }
+        } catch (Exception e) { /* keep it empty */ }
+        String server = call.getString("server", "");
+        if (server == null || !server.matches("^https?://[A-Za-z0-9.-]+(:\\d{1,5})?$")) server = "";
+        getContext().getSharedPreferences(PriceAlertChecker.PREFS, android.content.Context.MODE_PRIVATE).edit()
+            .putString("targets", clean.toString())
+            .putString("wishlist", wishlist.toString())
+            .putString("server", server)
+            .putBoolean("notifyFree", call.getBoolean("notifyFree", true))
+            .putBoolean("notifyDeals", call.getBoolean("notifyDeals", true))
+            .apply();
         PriceAlertWorker.schedule(getContext());
         call.resolve();
     }

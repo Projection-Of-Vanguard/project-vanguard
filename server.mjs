@@ -28,6 +28,10 @@ const log = (...a) => console.log(new Date().toISOString().slice(11, 19), ...a);
 // Public mode: the hosted website (Vercel). Data lives in Vercel Blob, settings that change the
 // server are switched off, and only the deployment's own domains are answered.
 const PUBLIC = process.env.PUBLIC_MODE === '1';
+// Home server (ProjectServer on a spare PC): read-only like the website, but data, photos and the
+// hourly deal feed live on that PC's disk, and phones on the network connect to it directly.
+const HOME = process.env.HOME_MODE === '1';
+const SHARED = PUBLIC || HOME;
 const APP_ORIGIN = 'https://app.projectvanguard';
 
 const DEFAULT_CONFIG = { catalogMax: 10000, minPlayers: 100, refreshHours: 6, aiEnabled: true, aiModel: 'claude-opus-5-5' };
@@ -326,15 +330,139 @@ async function buildCatalog() {
       tags = Object.fromEntries(all.filter((t) => used.has(t.tagid)).map((t) => [t.tagid, t.name]));
     } catch (e) { log(`catalog: tag names failed: ${e.message}`); }
 
+    const previous = catalog?.games;
     catalog = { v: 3, updated: now, count: games.length, minPlayers, tags, games, changes: { added, removed: history.removed.slice(0, 40) } };
+    recordEvents(previous, games);
     await writeStore('catalog.json', catalog);
     await writeStore('history.json', history);
     encodeCatalog();
     lastError = null;
     buildPct = 100;
     log(`catalog: ${games.length} games (+${added.length} / -${removed.length}) in ${((Date.now() - t0) / 1000).toFixed(1)}s`);
+    if (HOME) setTimeout(warmCache, 5000);
   })().catch((e) => { lastError = e.message; log(`catalog: build failed: ${e.message}`); }).finally(() => { building = null; buildProgress = ''; buildPct = 0; });
   return building;
+}
+
+/* -------------------------------------------------- deal feed (home server) */
+
+// Free-to-keep games (any) and new 50%+ discounts on the 200 most played games
+let events = [];
+function recordEvents(previous, games) {
+  if (!previous?.length) return; // the first catalog has nothing to compare with
+  const now = Math.floor(Date.now() / 1000); // when recorded, so phones that checked during the build still get them
+  const before = new Map(previous.map((g) => [g.id, g]));
+  const popular = new Set([...games].sort((a, b) => (b.pk || 0) - (a.pk || 0)).slice(0, 200).map((g) => g.id));
+  const freeToKeep = (g) => g && !g.f && g.p === 0 && g.o > 0;
+  const found = [];
+  for (const g of games) {
+    const old = before.get(g.id);
+    let type = null;
+    if (freeToKeep(g) && !freeToKeep(old)) type = 'free';
+    else if ((g.d || 0) >= 50 && (old?.d || 0) < 50 && popular.has(g.id)) type = 'deal';
+    if (type) found.push({ key: `${type}-${g.id}-${now}`, type, id: g.id, name: g.n, price: g.p ?? 0, orig: g.o ?? null, disc: g.d || 0, ends: g.de || null, ts: now });
+  }
+  events = [...events.filter((e) => now - e.ts < 7 * 86400), ...found].slice(-500);
+  if (found.length) log(`deals: ${found.filter((e) => e.type === 'free').length} free, ${found.filter((e) => e.type === 'deal').length} big discounts`);
+  writeStore('events.json', events).catch(() => {});
+}
+
+/* ------------------------------------------------ photo cache (home server) */
+
+// Steam's image hosts only; photos are fetched once, then served from this PC's disk
+const IMG_HOSTS = ['shared.akamai.steamstatic.com', 'shared.fastly.steamstatic.com', 'shared.cloudflare.steamstatic.com', 'cdn.akamai.steamstatic.com',
+  'cdn.fastly.steamstatic.com', 'cdn.cloudflare.steamstatic.com', 'store.akamai.steamstatic.com', 'store.fastly.steamstatic.com',
+  'clan.akamai.steamstatic.com', 'clan.fastly.steamstatic.com', 'avatars.akamai.steamstatic.com', 'avatars.fastly.steamstatic.com',
+  'avatars.steamstatic.com', 'community.akamai.steamstatic.com', 'community.fastly.steamstatic.com', 'steamcdn-a.akamaihd.net',
+  'steamcommunity-a.akamaihd.net', 'steamuserimages-a.akamaihd.net', 'images.steamusercontent.com'];
+const IMG_HOST_SET = new Set(IMG_HOSTS);
+const IMG_RE = new RegExp(`https://(${IMG_HOSTS.map((h) => h.replace(/\./g, '\\.')).join('|')})/`, 'g');
+const IMG_MAX_BYTES = 15 * 1048576;
+let IMG_DIR, imgLimit = 4 * 1073741824;
+const imgFetching = new Map();
+
+async function imageFile(upstream) {
+  const key = crypto.createHash('sha1').update(upstream).digest('hex');
+  const file = path.join(IMG_DIR, key.slice(0, 2), key);
+  try { const type = await fs.readFile(file + '.type', 'utf8'); return { file, type, key }; } catch { /* not cached yet */ }
+  if (!imgFetching.has(key)) {
+    imgFetching.set(key, (async () => {
+      const r = await fetch(upstream, { signal: AbortSignal.timeout(20000), headers: UA });
+      const type = (r.headers.get('content-type') || '').split(';')[0];
+      if (!r.ok || !/^image\/(jpeg|png|gif|webp|avif)$/.test(type)) throw fail(r.status === 404 ? 404 : 502, 'Image unavailable');
+      const body = Buffer.from(await r.arrayBuffer());
+      if (body.length > IMG_MAX_BYTES) throw fail(502, 'Image too large');
+      await fs.mkdir(path.dirname(file), { recursive: true });
+      await fs.writeFile(file, body);
+      await fs.writeFile(file + '.type', type);
+    })().finally(() => imgFetching.delete(key)));
+  }
+  await imgFetching.get(key);
+  return { file, type: await fs.readFile(file + '.type', 'utf8'), key };
+}
+
+async function serveImage(req, res, pathname, search) {
+  const m = /^\/img\/([a-z0-9.-]+)\/([\w\-./%~,+=@]{1,400})$/i.exec(pathname);
+  if (!m || !IMG_HOST_SET.has(m[1]) || m[2].includes('..')) throw fail(404, 'Not found');
+  const { file, type, key } = await imageFile(`https://${m[1]}/${m[2]}${search && search.length < 200 ? search : ''}`);
+  const etag = `"i-${key}"`;
+  // Public Steam photos, shown inside the app's own page: allow cross-origin use (data keeps same-origin)
+  const headers = { 'Content-Type': type, 'Cache-Control': 'public, max-age=2592000, immutable', ETag: etag, 'Cross-Origin-Resource-Policy': 'cross-origin' };
+  if (req.headers['if-none-match'] === etag) { res.writeHead(304, headers); res.end(); return; }
+  res.writeHead(200, headers);
+  if (req.method === 'HEAD') { res.end(); return; }
+  createReadStream(file).pipe(res);
+}
+
+// Keep the photo cache under its size limit, removing the least recently used photos first
+async function pruneImages() {
+  const files = [];
+  for (const dir of await fs.readdir(IMG_DIR).catch(() => [])) {
+    for (const name of await fs.readdir(path.join(IMG_DIR, dir)).catch(() => [])) {
+      if (name.endsWith('.type')) continue;
+      const st = await fs.stat(path.join(IMG_DIR, dir, name)).catch(() => null);
+      if (st) files.push({ f: path.join(IMG_DIR, dir, name), size: st.size, used: Math.max(st.atimeMs, st.mtimeMs) });
+    }
+  }
+  let total = files.reduce((n, x) => n + x.size, 0);
+  if (total <= imgLimit) return;
+  files.sort((a, b) => a.used - b.used);
+  for (const x of files) {
+    if (total <= imgLimit * 0.9) break;
+    await fs.rm(x.f, { force: true }); await fs.rm(x.f + '.type', { force: true });
+    total -= x.size;
+  }
+  log(`photos: cache trimmed to ${(total / 1073741824).toFixed(2)} GB`);
+}
+
+// After each refresh: game details for the 300 most played games and every cover photo, so taps are instant
+let warming = false;
+async function warmCache() {
+  if (warming || !catalog) return;
+  warming = true;
+  const t0 = Date.now();
+  try {
+    const top = [...catalog.games].sort((a, b) => (b.pk || 0) - (a.pk || 0));
+    for (const g of top.slice(0, 300)) { if (building) break; await appDetails(g.id).catch(() => {}); await new Promise((r) => setTimeout(r, 250)); }
+    let i = 0;
+    const covers = top.map((g) => `https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/${g.id}/${g.h || 'header.jpg'}`);
+    await Promise.all(Array.from({ length: 4 }, async () => { while (i < covers.length && !building) await imageFile(covers[i++]).catch(() => {}); }));
+    await pruneImages();
+    log(`warm-up: details and photos ready in ${((Date.now() - t0) / 1000).toFixed(0)}s`);
+  } finally { warming = false; }
+}
+
+function sendHomeStatus(req, res) {
+  const h = (v) => String(v).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+  const updated = catalog?.updated ? new Date(catalog.updated * 1000).toLocaleString() : 'not yet';
+  const html = `<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Project Vanguard home server</title>
+<body style="font:16px/1.6 system-ui,sans-serif;background:#0b1424;color:#e9f1fa;max-width:640px;margin:40px auto;padding:0 16px">
+<h1 style="font-size:24px">Project Vanguard home server is running</h1>
+<p>${(catalog?.games.length || 0).toLocaleString('en-US')} games, last refreshed ${h(updated)}${building ? ' (refreshing now)' : ''}. Refreshes every ${config.refreshHours} hour${config.refreshHours === 1 ? '' : 's'}.</p>
+<p>${events.length} deal notification${events.length === 1 ? '' : 's'} in the last 7 days.</p>
+<p>In the Steam Redesigned app on your phone, open Settings &rsaquo; Catalog &amp; data &rsaquo; Home server and enter <b>http://${h(req.headers.host)}</b></p></body>`;
+  res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store', 'Content-Security-Policy': "default-src 'none'; style-src 'unsafe-inline'" });
+  res.end(html);
 }
 
 /* ------------------------------------------------- SteamSpy discovery crawl */
@@ -719,7 +847,7 @@ function readBody(req, limit = 16 * 1024) {
 }
 
 function publicConfig() {
-  if (PUBLIC) return { publicSite: true, catalogMax: config.catalogMax, minPlayers: config.minPlayers, refreshHours: 24, aiEnabled: false, aiConfigured: false, aiModels: [], aiKeySource: null };
+  if (SHARED) return { publicSite: true, homeServer: HOME, catalogMax: config.catalogMax, minPlayers: config.minPlayers, refreshHours: HOME ? config.refreshHours : 24, aiEnabled: false, aiConfigured: false, aiModels: [], aiKeySource: null };
   return {
     ...config,
     aiModels: AI_MODELS,
@@ -750,9 +878,16 @@ const PUBLIC_FILES = new Set(['index.html', 'styles.css', 'manifest.webmanifest'
 const PUBLIC_DIRS = ['js/', 'assets/'];
 
 function sendJSON(req, res, status, body, maxAge = 0) {
-  const raw = Buffer.from(JSON.stringify(body));
-  const cacheControl = !maxAge ? 'no-store' : PUBLIC ? `public, max-age=${Math.min(maxAge, 300)}, s-maxage=${maxAge}, stale-while-revalidate=600` : `private, max-age=${maxAge}`;
-  const headers = { 'Content-Type': TYPES['.json'], 'Cache-Control': cacheControl, Vary: 'Accept-Encoding' };
+  let text = JSON.stringify(body);
+  if (HOME) {
+    // The phone app reaches this server through its own /_home/<scheme>/<host> path and says so
+    const via = req.headers['x-vanguard-base'] || '';
+    const base = /^\/_home\/https?\/[a-z0-9.-]{1,253}(:\d{1,5})?$/i.test(via) ? via : `http://${req.headers.host}`;
+    text = text.replace(IMG_RE, (m, host) => `${base}/img/${host}/`);
+  }
+  const raw = Buffer.from(text);
+  const cacheControl = !maxAge ? 'no-store' : HOME ? `public, max-age=${maxAge}` : PUBLIC ? `public, max-age=${Math.min(maxAge, 300)}, s-maxage=${maxAge}, stale-while-revalidate=600` : `private, max-age=${maxAge}`;
+  const headers = { 'Content-Type': TYPES['.json'], 'Cache-Control': cacheControl, Vary: HOME ? 'Accept-Encoding, X-Vanguard-Base' : 'Accept-Encoding' };
   if (raw.length > 1024 && /\bgzip\b/.test(req.headers['accept-encoding'] || '')) { headers['Content-Encoding'] = 'gzip'; res.writeHead(status, headers); res.end(zlib.gzipSync(raw)); return; }
   res.writeHead(status, headers); res.end(raw);
 }
@@ -800,11 +935,11 @@ function makeHandler(port) {
   // Locally: only this machine's loopback names. Hosted: Vercel only routes this project's own domains here.
   const hosts = new Set([`localhost:${port}`, `127.0.0.1:${port}`, `[::1]:${port}`]);
   const origins = new Set([...hosts].map((h) => `http://${h}`));
-  const hostOk = (host) => (PUBLIC ? /^[a-z0-9.-]{1,253}$/.test(host) : hosts.has(host));
+  const hostOk = (host) => (SHARED ? /^[a-z0-9.-]{1,253}(:\d{1,5})?$/.test(host) : hosts.has(host));
   // The Android app bundles the interface and calls the hosted API from its own fixed origin.
   // ".projectvanguard" is not a real top-level domain, so no website can send this origin.
-  const fromApp = (origin) => PUBLIC && origin === APP_ORIGIN;
-  const originOk = (origin, host) => (PUBLIC ? origin === `https://${host}` || fromApp(origin) : origins.has(origin));
+  const fromApp = (origin) => SHARED && origin === APP_ORIGIN;
+  const originOk = (origin, host) => (PUBLIC ? origin === `https://${host}` || fromApp(origin) : HOME ? origin === `http://${host}` || fromApp(origin) : origins.has(origin));
 
   return async (req, res) => {
     // DNS-rebinding protection: only answer requests addressed to this machine
@@ -822,8 +957,9 @@ function makeHandler(port) {
     const { pathname, searchParams } = url;
     const ip = PUBLIC ? String(req.headers['x-real-ip'] || req.headers['x-forwarded-for'] || 'anon').split(',')[0].trim() : req.socket.remoteAddress || 'local';
     securityHeaders(res, false);
-    if (PUBLIC) {
+    if (SHARED) {
       res.setHeader('Access-Control-Allow-Origin', APP_ORIGIN);
+      if (HOME) res.setHeader('Access-Control-Allow-Private-Network', 'true'); // the app reaching a PC on the home network
       res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-CSRF-Token');
       res.setHeader('Access-Control-Allow-Methods', 'GET, POST');
       res.setHeader('Access-Control-Max-Age', '600');
@@ -832,7 +968,15 @@ function makeHandler(port) {
 
     try {
       if (req.method === 'GET' || req.method === 'HEAD') {
-        if (!pathname.startsWith('/api/')) { if (PUBLIC) throw fail(404, 'Not found'); return serveStatic(req, res, pathname); }
+        if (!pathname.startsWith('/api/')) {
+          if (HOME && pathname.startsWith('/img/')) {
+            if (!allow(`${ip}:img`, 1200)) throw fail(429, 'Too many requests');
+            return await serveImage(req, res, pathname, url.search);
+          }
+          if (HOME && pathname === '/') return sendHomeStatus(req, res);
+          if (SHARED) throw fail(404, 'Not found');
+          return serveStatic(req, res, pathname);
+        }
         // Daily catalog refresh on the hosted site (Vercel Cron, authenticated with CRON_SECRET)
         if (PUBLIC && pathname === '/api/cron/refresh') {
           const want = process.env.CRON_SECRET ? `Bearer ${process.env.CRON_SECRET}` : null;
@@ -848,6 +992,11 @@ function makeHandler(port) {
         if (pathname === '/api/catalog') { if (!allow(`${ip}:catalog`, LIMITS.catalog)) throw fail(429, 'Too many requests'); return sendCatalog(req, res); }
         if (!allow(`${ip}:read`, LIMITS.read)) throw fail(429, 'Too many requests');
         if (pathname === '/api/session') return sendJSON(req, res, 200, { csrf: CSRF, config: publicConfig() });
+        // New free games and big deals since a time (unix seconds): phones turn these into notifications
+        if (pathname === '/api/events') {
+          const since = int(searchParams.get('since') || 0, 0, 4e9) ?? 0;
+          return sendJSON(req, res, 200, { now: Math.floor(Date.now() / 1000), events: events.filter((e) => e.ts > since).slice(-100) }, 60);
+        }
         // Current prices for up to 100 games: price alerts check these (the phone app in the background)
         if (pathname === '/api/prices') {
           const ids = [...new Set((searchParams.get('ids') || '').split(',').map(Number))].filter((n) => Number.isInteger(n) && n > 0 && n < 1e8).slice(0, 100);
@@ -897,7 +1046,7 @@ function makeHandler(port) {
           return sendJSON(req, res, 200, await aiSearch(q.trim()));
         }
         if (!allow(`${ip}:write`, LIMITS.write)) throw fail(429, 'Too many requests');
-        if (PUBLIC) throw fail(403, 'This option is only available in the desktop app.');
+        if (SHARED) throw fail(403, 'This option is only available in the desktop app.');
         if (pathname === '/api/config') {
           const body = await readBody(req);
           const before = { catalogMax: config.catalogMax, minPlayers: config.minPlayers };
@@ -961,7 +1110,7 @@ export function createPublicHandler() {
 }
 
 /** Start the data server. Used by `node server.mjs` and by the desktop app. */
-export async function startServer({ port = +process.env.PORT || 5173, dataDir = path.join(ROOT, 'data'), secretStore = null } = {}) {
+export async function startServer({ port = +process.env.PORT || 5173, dataDir = path.join(ROOT, 'data'), secretStore = null, host = '127.0.0.1', refreshHours = null, imageCacheGB = null } = {}) {
   DATA = dataDir;
   CACHE = path.join(DATA, 'cache');
   CATALOG_FILE = path.join(DATA, 'catalog.json');
@@ -969,8 +1118,12 @@ export async function startServer({ port = +process.env.PORT || 5173, dataDir = 
   CONFIG_FILE = path.join(DATA, 'config.json');
   SECRETS_FILE = path.join(DATA, 'secrets.json');
   SPY_FILE = path.join(DATA, 'steamspy.json');
+  IMG_DIR = path.join(DATA, 'img');
   await fs.mkdir(CACHE, { recursive: true });
   config = { ...DEFAULT_CONFIG, ...(await loadJSON(CONFIG_FILE, {})) };
+  if (refreshHours) config.refreshHours = refreshHours;
+  if (imageCacheGB) imgLimit = imageCacheGB * 1073741824;
+  events = await loadJSON(path.join(DATA, 'events.json'), []);
   secrets = secretStore || fileSecrets();
   catalog = await loadJSON(CATALOG_FILE, null);
   if (catalog?.games?.length) { encodeCatalog(); log(`catalog: loaded ${catalog.games.length} games from disk`); }
@@ -987,8 +1140,9 @@ export async function startServer({ port = +process.env.PORT || 5173, dataDir = 
   const server = http.createServer({ requestTimeout: 60_000, headersTimeout: 15_000 }, makeHandler(port));
   server.keepAliveTimeout = 5_000;
   server.maxHeadersCount = 60;
-  await new Promise((resolve, reject) => { server.once('error', reject); server.listen(port, '127.0.0.1', resolve); });
-  log(`Steam redesign running at http://localhost:${port} (local only; catalog refresh every ${config.refreshHours}h)`);
+  await new Promise((resolve, reject) => { server.once('error', reject); server.listen(port, host, resolve); });
+  log(`Steam redesign running at http://localhost:${port} (${host === '127.0.0.1' ? 'local only' : 'open to this network'}; catalog refresh every ${config.refreshHours}h)`);
+  if (HOME && catalog) setTimeout(warmCache, 15000).unref?.();
   return { port, close: () => new Promise((r) => { clearInterval(timer); clearInterval(spyTimer); server.close(() => r()); }), refresh: buildCatalog };
 }
 

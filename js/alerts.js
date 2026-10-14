@@ -35,10 +35,16 @@ function toastHits(hits) {
 let checking = null;
 /** Compare current prices with the alert targets and notify about new hits. */
 export function checkPriceAlerts() {
-  if (checking || !Object.keys(state.targets).length) return checking;
+  // The phone app also checks the deal feed, so it runs even without price alerts
+  if (checking || (!android() && !Object.keys(state.targets).length)) return checking;
   checking = (async () => {
     // The phone app keeps one record of what it already notified, shared with its background checks
-    if (android()) { const { hits = [] } = await android().checkNow().catch(() => ({})); toastHits(hits); return; }
+    if (android()) {
+      const { hits = [] } = await android().checkNow().catch(() => ({}));
+      const [h] = hits;
+      if (h) toast(hits.length === 1 ? h.title : `${hits.length} new price alerts and deals`, { label: 'View', fn: () => { location.hash = hits.length === 1 && h.id > 0 ? `#/app/${h.id}` : '#/browse/specials'; } });
+      return;
+    }
     const ids = Object.keys(state.targets);
     const data = await fetch(`/api/prices?ids=${ids.join(',')}`, { cache: 'no-store' }).then((r) => (r.ok ? r.json() : null)).catch(() => null);
     if (!data?.prices) return;
@@ -64,13 +70,23 @@ function askPermission() {
   if (!window.desktop && 'Notification' in window && Notification.permission === 'default') Notification.requestPermission().catch(() => {});
 }
 
+/** The phone's background checks need the alert targets, the wishlist (for deals) and the home server. */
 function syncAndroid() {
-  android()?.sync({ targets: JSON.stringify(state.targets), api: window.mobileApp?.apiBase || '' }).catch(() => {});
+  const p = window.STPrefs?.get() || {};
+  android()?.sync({
+    targets: JSON.stringify(state.targets),
+    wishlist: JSON.stringify([...state.wish]),
+    server: window.mobileApp?.homeServer || '',
+    notifyFree: p.notifyFree !== false,
+    notifyDeals: p.notifyDeals !== false,
+  }).catch(() => {});
 }
 
 export function initPriceAlerts() {
   syncAndroid();
+  window.addEventListener('prefs', syncAndroid);
   onChange((what) => {
+    if (what === 'wish') syncAndroid();
     if (what !== 'targets') return;
     syncAndroid();
     if (Object.keys(state.targets).length) { askPermission(); checkPriceAlerts(); }
