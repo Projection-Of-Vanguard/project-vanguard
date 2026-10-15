@@ -158,8 +158,39 @@ function createTray() {
   tray.on('click', () => show());
 }
 
+/*
+ * Start with Windows. On Windows this is a "Steam Redesigned" shortcut in the user's Startup folder,
+ * with the Project Vanguard icon (no special permission needed, and Windows lists it under that name
+ * in Task Manager > Startup apps). It opens the installed app (the one the Start menu's "Steam
+ * Redesigned" shortcut opens); a copy run from source with no installed app opens itself through
+ * Electron with the app folder, never plain Electron. Older versions registered a Run entry, which
+ * showed up as "Electron" for a copy run from source: it is removed.
+ */
+const STARTUP_LINK = path.join(app.getPath('appData'), 'Microsoft', 'Windows', 'Start Menu', 'Programs', 'Startup', 'Steam Redesigned.lnk');
+const MENU_LINK = path.join(app.getPath('appData'), 'Microsoft', 'Windows', 'Start Menu', 'Programs', 'Steam Redesigned.lnk');
+function launchTarget() {
+  if (app.isPackaged) return { target: process.execPath, args: [], icon: process.execPath };
+  try {
+    const l = shell.readShortcutLink(MENU_LINK);
+    if (l.target && /\.exe$/i.test(l.target) && fs.existsSync(l.target)) return { target: l.target, args: [], icon: l.icon && fs.existsSync(l.icon) ? l.icon : l.target };
+  } catch { /* no installed copy */ }
+  return { target: process.execPath, args: [`"${app.getAppPath()}"`], icon: path.join(ROOT, 'assets', 'icon.ico') };
+}
 function applyLoginItem() {
-  app.setLoginItemSettings({ openAtLogin: settings.startWithWindows, args: ['--hidden'] });
+  if (process.platform !== 'win32') { app.setLoginItemSettings({ openAtLogin: settings.startWithWindows, args: ['--hidden'] }); return; }
+  try { app.setLoginItemSettings({ openAtLogin: false }); app.setLoginItemSettings({ openAtLogin: false, args: ['--hidden'] }); } catch { /* no old entry */ }
+  try {
+    if (!settings.startWithWindows) { fs.rmSync(STARTUP_LINK, { force: true }); return; }
+    const t = launchTarget();
+    fs.mkdirSync(path.dirname(STARTUP_LINK), { recursive: true });
+    const ok = shell.writeShortcutLink(STARTUP_LINK, fs.existsSync(STARTUP_LINK) ? 'replace' : 'create', {
+      target: t.target, args: [...t.args, '--hidden'].join(' '), cwd: path.dirname(t.target),
+      icon: t.icon, iconIndex: 0, description: 'Steam Redesigned (Project Vanguard)', appUserModelId: 'com.projectvanguard.steamredesigned',
+    });
+    if (!ok) throw new Error('Windows did not accept the startup shortcut');
+  } catch (e) {
+    dialog.showErrorBox('Start with Windows', `Steam Redesigned could not add itself to Windows startup: ${e.message}`);
+  }
 }
 
 /* ------------------------------------------------------------------ IPC */

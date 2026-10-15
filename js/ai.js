@@ -3,7 +3,7 @@
 // parser understands the common patterns (price, tags, "like X", platforms, release window).
 
 import { db, norm, searchGames, tagName, tagId, post, getSession } from './data.js';
-import { askJSON, sanitizeIntent, cleanAdvice, SEARCH_SYSTEM, PRICE_SYSTEM, PROVIDERS } from './llm.js';
+import { askJSON, sanitizeIntent, cleanAdvice, chat, chatSystem, cleanMessages, SEARCH_SYSTEM, PRICE_SYSTEM, PROVIDERS } from './llm.js';
 import { similarity } from './recs.js';
 
 const SYNONYMS = {
@@ -98,6 +98,17 @@ export async function interpret(q) {
   } catch (e) {
     return { intent: offlineIntent(q), source: 'offline', online: false, reason: e.message, status: e.status };
   }
+}
+
+/** Vanguard, the mascot: the connected AI's reply to a conversation [{ role, content }]. */
+export async function askVanguard(messages) {
+  if (await aiWhere() === 'server') return post('/api/ai-chat', { messages });
+  const cfg = deviceAI.get();
+  if (!cfg) throw noAI();
+  const top = [...db.all].sort((a, b) => (b.peak || 0) - (a.peak || 0)).slice(0, 120).map((g) => g.name);
+  const reply = await chat(cfg, { system: chatSystem(top), messages: cleanMessages(messages) });
+  if (!reply) throw Object.assign(new Error('The AI sent an empty answer. Try again.'), { status: 502 });
+  return { reply, model: cfg.model };
 }
 
 /** Is an AI connected on this device or desktop app? */

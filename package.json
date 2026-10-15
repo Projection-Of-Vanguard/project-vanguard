@@ -1,7 +1,7 @@
 {
   "name": "steam-redesigned",
   "productName": "Steam Redesigned",
-  "version": "3.3.0",
+  "version": "3.4.0",
   "description": "Steam Redesigned (Project Vanguard): an unofficial Steam store and community app running on live Steam data.",
   "private": true,
   "type": "module",
@@ -111,7 +111,7 @@
       "installerHeader": "assets/installer-header.bmp",
       "deleteAppDataOnUninstall": false,
       "runAfterFinish": true,
-      "appPackageUrl": "https://github.com/Projection-Of-Vanguard/project-vanguard/releases/download/v3.3.0/steam-redesigned-3.3.0-x64.nsis.7z",
+      "appPackageUrl": "https://github.com/Projection-Of-Vanguard/project-vanguard/releases/download/v3.4.0/steam-redesigned-3.4.0-x64.nsis.7z",
       "artifactName": "Steam-Redesigned-Setup-${version}.${ext}",
       "include": "assets/installer.nsh"
     },

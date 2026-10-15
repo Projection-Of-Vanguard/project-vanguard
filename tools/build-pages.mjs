@@ -117,7 +117,7 @@ ${shots.map(([n, alt], i) => `          <figure class="shot${i === 0 ? ' shot--w
               <li>Official Windows, macOS, Linux and Steam Deck logos next to every game name.</li>
               <li>Live player counts, price and player history charts, and the lowest recorded price.</li>
               <li>Price alerts on your wishlist with Windows and Android notifications, side-by-side compare and a release calendar.</li>
-              <li>Search that forgives typos, plus AI search and price advice with a key from any AI provider (Gemini and Groq give free keys).</li>
+              <li>Search that forgives typos, plus AI search, price advice and an AI chat helper with a free AI key (Google Gemini, Groq or OpenRouter).</li>
             </ul>
           </div>
           <div>
@@ -154,7 +154,7 @@ ${shots.map(([n, alt], i) => `          <figure class="shot${i === 0 ? ' shot--w
               <tr><th scope="row">Store, game pages, community, recommendations</th><td>Yes</td><td>Yes</td><td>Yes</td></tr>
               <tr><th scope="row">Opens instantly, full screen</th><td>Yes</td><td>Yes</td><td>In a browser tab</td></tr>
               <tr><th scope="row">Catalog refresh</th><td>Every 6 hours, or on demand</td><td>Daily</td><td>Daily</td></tr>
-              <tr><th scope="row">AI search and price advice</th><td>Yes, with your own key from any AI provider</td><td>Yes, with your own key</td><td>Yes, with your own key</td></tr>
+              <tr><th scope="row">AI search, price advice and AI chat</th><td>Yes, with a free AI key</td><td>Yes, with a free AI key</td><td>Yes, with a free AI key</td></tr>
               <tr><th scope="row">Catalog size and player limit settings</th><td>Yes</td><td>No</td><td>No</td></tr>
               <tr><th scope="row">System tray, notifications</th><td>Yes</td><td>No</td><td>No</td></tr>
               <tr><th scope="row">Runs on</th><td>Windows 10 and 11</td><td>Android 7 and later</td><td>Any browser</td></tr>

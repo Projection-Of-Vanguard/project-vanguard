@@ -849,6 +849,16 @@ async function priceFacts(id) {
   };
 }
 
+/** Vanguard, the mascot: one chat turn with the connected AI. */
+async function aiChat(messages) {
+  const cfg = aiReady();
+  const { chat, chatSystem, cleanMessages } = await llm();
+  const top = [...(catalog?.games || [])].sort((a, b) => (b.pk || 0) - (a.pk || 0)).slice(0, 120).map((g) => g.n);
+  const reply = await chat(cfg, { system: chatSystem(top), messages: cleanMessages(messages) });
+  if (!reply) throw Object.assign(new Error('The AI sent an empty answer. Try again.'), { status: 502 });
+  return { reply: reply.slice(0, 6000), model: cfg.model };
+}
+
 async function aiPrices(id) {
   const cfg = aiReady();
   const { askJSON, cleanAdvice, PRICE_SYSTEM } = await llm();
@@ -1086,6 +1096,10 @@ function makeHandler(port) {
           return sendJSON(req, res, 200, { prices: h.prices?.[id] || [], samples: h.samples?.[id] || [], daily: h.daily?.[id] || [] }, 300);
         }
         if ((m = pathname.match(/^\/api\/players\/(\d{1,8})$/))) return sendJSON(req, res, 200, await livePlayers(+m[1]), 30);
+        if (pathname === '/api/latest') {
+          const d = await cached('latest-release', 3600e3, () => get('https://projection-of-vanguard.github.io/downloads.json'));
+          return sendJSON(req, res, 200, { version: String(d?.version || '').slice(0, 20), date: d?.date || null, release: /^https:\/\/github\.com\//.test(d?.release || '') ? d.release : null }, 1800);
+        }
         if ((m = pathname.match(/^\/api\/stores\/(\d{1,8})$/))) {
           if (!allow(`${ip}:stores`, 60)) throw fail(429, 'Too many requests');
           return sendJSON(req, res, 200, await otherStores(+m[1]), 1800);
@@ -1114,6 +1128,12 @@ function makeHandler(port) {
           const { q } = await readBody(req, 4096);
           if (typeof q !== 'string' || !q.trim() || q.length > 300) throw fail(400, 'Write a request between 1 and 300 characters.');
           return sendJSON(req, res, 200, await aiSearch(q.trim()));
+        }
+        if (pathname === '/api/ai-chat') {
+          if (!allow(`${ip}:ai`, LIMITS.ai)) throw fail(429, 'Too many questions in a row. Wait a moment and try again.');
+          const { messages } = await readBody(req, 32 * 1024);
+          if (!Array.isArray(messages) || messages.length > 40) throw fail(400, 'Write a question first.');
+          return sendJSON(req, res, 200, await aiChat(messages));
         }
         if (pathname === '/api/ai-prices') {
           if (!allow(`${ip}:ai`, LIMITS.ai)) throw fail(429, 'Too many AI requests. Wait a moment and try again.');

@@ -118,6 +118,71 @@ export async function askJSON(cfg, { system, user, maxTokens = 2000 }) {
   try { return JSON.parse(json); } catch { throw fail('The AI answered in an unexpected format. Try again, or pick another model.', 502); }
 }
 
+/**
+ * A conversation turn: messages is [{ role: 'user' | 'assistant', content }], oldest first, ending
+ * with the user's message. Returns the reply as plain text.
+ */
+export async function chat(cfg, { system, messages, maxTokens = 1200 }) {
+  const p = PROVIDERS[cfg.provider];
+  const label = cfg.provider === 'custom' ? 'Your AI server' : p.label.replace(/ \(.*\)$/, '');
+  const headers = { 'Content-Type': 'application/json', ...authHeaders(cfg) };
+  if (p.kind === 'anthropic') {
+    const d = await request(`${cfg.base}/messages`, { method: 'POST', headers, body: JSON.stringify({ model: cfg.model, max_tokens: maxTokens, system, messages }) }, label);
+    if (d.stop_reason === 'refusal') throw fail('The AI declined to answer that. Try asking differently.', 422);
+    return (d.content || []).filter((b) => b.type === 'text').map((b) => b.text).join('').trim();
+  }
+  if (p.kind === 'gemini') {
+    const d = await request(`${cfg.base}/models/${encodeURIComponent(cfg.model)}:generateContent`, { method: 'POST', headers, body: JSON.stringify({
+      systemInstruction: { parts: [{ text: system }] },
+      contents: messages.map((m) => ({ role: m.role === 'assistant' ? 'model' : 'user', parts: [{ text: m.content }] })),
+      generationConfig: { maxOutputTokens: Math.max(maxTokens, 8192) },
+    }) }, label);
+    const text = (d.candidates?.[0]?.content?.parts || []).map((x) => x.text || '').join('').trim();
+    if (!text && d.promptFeedback?.blockReason) throw fail('The AI declined to answer that. Try asking differently.', 422);
+    return text;
+  }
+  const body = { model: cfg.model, messages: [{ role: 'system', content: system }, ...messages], max_tokens: Math.max(maxTokens, 4000) };
+  if (cfg.provider === 'groq' && /gpt-oss/.test(cfg.model)) body.reasoning_effort = 'low';
+  if (cfg.provider === 'groq' && /qwen3/.test(cfg.model)) body.reasoning_effort = 'none';
+  if (cfg.provider === 'openrouter') body.reasoning = { effort: 'low' };
+  if (cfg.provider === 'openai') { body.max_completion_tokens = Math.max(maxTokens, 6000); delete body.max_tokens; }
+  let d;
+  try { d = await request(`${cfg.base}/chat/completions`, { method: 'POST', headers, body: JSON.stringify(body) }, label); }
+  catch (e) {
+    if (e.status !== 400 && e.status !== 502) throw e;
+    delete body.reasoning_effort; delete body.reasoning; // a model that doesn't take the reasoning setting
+    d = await request(`${cfg.base}/chat/completions`, { method: 'POST', headers, body: JSON.stringify(body) }, label);
+  }
+  // Some reasoning models put their thinking in <think> tags; only the answer is shown
+  return String(d.choices?.[0]?.message?.content || '').replace(/<think>[\s\S]*?<\/think>/g, '').trim();
+}
+
+/** Vanguard, the mascot: who it is and how it answers. games: names of popular games in the catalog. */
+export function chatSystem(games) {
+  return `You are Vanguard, the friendly cloud-headed robot mascot of Steam Redesigned, an unofficial redesign of the Steam store. You help people find PC games and answer questions about games, the store, Steam and gaming.
+
+How you answer:
+- Be warm and brief: a few short sentences, or a short list of up to 6 items. No headings.
+- Whenever you name a specific game, write its exact title in double square brackets, like [[Hades]] or [[Stardew Valley]], so the app can show it. Prefer games from the catalog list below when they fit.
+- Don't invent prices, discounts, release dates or player counts. The app shows live prices on each game's page.
+- If a question has nothing to do with games, answer briefly and kindly steer back to games.
+- Plain text. Lists use "- " at the start of a line. You may use **bold** for emphasis.
+
+Popular games in this store's catalog: ${games.join(', ')}`;
+}
+
+/** Keep a conversation the right shape and size before it goes to a provider. */
+export function cleanMessages(list) {
+  const out = (Array.isArray(list) ? list : [])
+    .filter((m) => m && (m.role === 'user' || m.role === 'assistant') && typeof m.content === 'string' && m.content.trim())
+    .map((m) => ({ role: m.role, content: m.content.trim().slice(0, 2000) }))
+    .slice(-12);
+  while (out.length && out[0].role !== 'user') out.shift();
+  if (!out.length || out[out.length - 1].role !== 'user') throw fail('Write a question first.', 400);
+  // providers want the turns to alternate: merge any two in a row from the same side
+  return out.reduce((acc, m) => { const last = acc[acc.length - 1]; if (last && last.role === m.role) last.content += `\n\n${m.content}`; else acc.push({ ...m }); return acc; }, []);
+}
+
 /** Models this key can use, with the recommended pick first. */
 export async function listModels(cfg) {
   const p = PROVIDERS[cfg.provider];

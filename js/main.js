@@ -4,6 +4,8 @@ import { $, $$, esc, icon, priceHTML, toast, useVT, ago, skel, nameHTML } from '
 import { vt, clearNames, markSource } from './transition.js';
 import { initPriceAlerts, checkPriceAlerts } from './alerts.js';
 import { initMusic } from './music.js';
+import { initMascot } from './mascot.js';
+import { viewChat, mountChat } from './views/chat.js';
 import { viewHome, mountHome } from './views/home.js';
 import { viewDetail, mountDetail } from './views/detail.js';
 import { viewBrowse, mountBrowse, browseTitle } from './views/browse.js';
@@ -33,6 +35,7 @@ function parse() {
   if (a === 'search') return { name: 'search', q: b || '' };
   if (a === 'queue') return { name: 'queue' };
   if (a === 'ai') return { name: 'ai', q: b || '' };
+  if (a === 'chat') return { name: 'chat' };
   if (a === 'recommendations') return { name: 'recs' };
   if (a === 'compare') return { name: 'compare' };
   if (a === 'calendar') return { name: 'calendar' };
@@ -69,6 +72,9 @@ function render() {
   } else if (r.name === 'calendar') {
     view.innerHTML = viewCalendar(); mountCalendar(view);
     title = 'Release calendar';
+  } else if (r.name === 'chat') {
+    view.innerHTML = viewChat(); mountChat(view, cleanups);
+    title = 'AI chat with Vanguard';
   } else if (r.name === 'ai') {
     view.innerHTML = viewAI(r); mountAI(view, r, cleanups);
     title = r.q ? `${r.q} · AI search` : 'AI search';
@@ -497,6 +503,7 @@ async function boot() {
   saleAlerts();
   initPriceAlerts();
   initMusic();
+  initMascot();
   initComments();
   initCompareTray();
   fetch('/api/status', { cache: 'no-store' }).then((r) => r.json()).then((st) => { if (st.building && !updating) { updating = true; waitForBuild(new Set(db.all.map((g) => g.id))); } }).catch(() => {});

@@ -40,7 +40,7 @@ On an iPhone, a Mac or Linux, use the [web version](https://projectvanguard.verc
 | Store, game pages, community, recommendations | Yes | Yes | Yes |
 | Opens instantly, full screen | Yes | Yes | In a browser tab |
 | Catalog refresh | Every 6 hours, or on demand | Daily | Daily |
-| AI search and price advice | Yes, with your own key from any AI provider | Yes, with your own key | Yes, with your own key |
+| AI search, price advice and AI chat | Yes, with a free AI key | Yes, with a free AI key | Yes, with a free AI key |
 | Catalog size and player limit settings | Yes | No | No |
 | System tray and notifications | Yes | No | No |
 | Runs on | Windows 10 and 11 | Android 7 and later | Any browser |
@@ -69,7 +69,8 @@ Run the data server on a spare PC at home, and phones on the same Wi-Fi get game
 - **Prices at other stores** on every game page: live prices from licensed PC stores (GOG, Humble, Fanatical, Green Man Gaming, Epic and more, via CheapShark), the lowest price ever, and with an AI connected, buying advice and the consoles and subscriptions the game is on.
 - **System requirements** laid out like parts on a motherboard: an illustrated slot for the processor, graphics card, memory, storage and more, minimum and recommended, and on a PC what this computer has.
 - **Popular demos** ranked by how many people are playing each demo right now, and **indie games**: the most played, and the ones gaining players day by day.
-- A **release calendar**, review filters (most helpful or recent, positive or negative) and fuzzy search with **AI search** that works with a key from **any AI provider**: Google Gemini, Groq, OpenAI, Anthropic, OpenRouter, Mistral, DeepSeek, xAI, or (desktop) a local server such as Ollama. Gemini and Groq give free keys.
+- A **release calendar**, review filters (most helpful or recent, positive or negative) and fuzzy search with **AI search** using a **free AI key**: Google Gemini, Groq or OpenRouter's free models, or (desktop) your own server such as Ollama. Paid AI services are not offered.
+- **Vanguard, the AI helper**: a little cloud robot in the corner. Click it and a question box pops out; it turns its head and watches you type, then answers in **AI chat**, where the games it mentions are links and cards.
 
 **Recommendations** (the Recommendations menu, or "For you" in the title bar)
 - A taste profile built from what you like, wishlist, own and open.
@@ -84,8 +85,10 @@ Run the data server on a spare PC at home, and phones on the same Wi-Fi get game
 **Settings** (gear, top right, or Ctrl + ,)
 - Themes, colours, background, notifications, accessibility, AI, music, catalog and desktop options.
 - **Background**: the art of the game in focus, a photo from your device or any game's art ("Set as background" on a game page), or plain, with blur, dimming and a slow drift.
-- **Music**: soundtracks from UNDERTALE, DELTARUNE, Hollow Knight, Silksong, Celeste, Hades, Stardew Valley, Minecraft, FTL, Bastion, Transistor and FEZ, played in a small dock while you browse. They stream through Bandcamp's own player from each composer's official page (nothing is copied into the app) with a link to buy the album.
+- **Music**: soundtracks from UNDERTALE, DELTARUNE, Hollow Knight (and its Piano Collections), Silksong, Celeste, Hades, Stardew Valley, Minecraft, FTL, Bastion, Transistor and FEZ in a player you can drag anywhere, with play, pause, stop, skip, 10-second jumps, a seek bar, volume, shuffle and repeat. Albums stream from the composers' official releases through YouTube's player (or Bandcamp's, for albums only on Bandcamp); nothing is copied into the app, and every album links to Bandcamp to buy it.
 - **Store**: start page, card size and which home page sections show.
+- **About** shows whether a newer version is out, with links to the GitHub page and the release notes.
+- **Start with Windows** adds a "Steam Redesigned" shortcut (with the Project Vanguard icon) to your Startup folder; no special permission needed.
 - **Animations** has a live preview: card hover styles for every card type, 7 page transitions, speed, cascades, parallax and carousel.
 - **Community** has its own animations: card hover, feed entrance, viewer opening and comments opening.
 

@@ -23,6 +23,7 @@ const SECTIONS = [
     { key: 'density', type: 'seg', label: 'Spacing', desc: 'Compact fits more on screen.', options: [['comfortable', 'Comfortable'], ['compact', 'Compact']] },
     { key: 'font', type: 'seg', label: 'Typeface', options: [['default', 'Chakra Petch and Instrument Sans'], ['system', 'System (Segoe UI)']] },
     { key: 'scale', type: 'range', label: 'Interface size', min: 80, max: 130, step: 5, unit: '%' },
+    { key: 'mascot', type: 'toggle', label: 'Vanguard, the AI helper', desc: 'The little cloud robot in the corner. Click it to ask about games; it answers in AI chat with the free AI you connect in Settings > AI.' },
   ] },
   { id: 'background', label: 'Background', icon: 'image', desc: 'The living backdrop behind every page', rows: [
     { key: 'bgSource', type: 'seg', label: 'Backdrop', desc: 'Game art blurs the art of the game in focus and fades between games. Photo shows a picture you choose.', options: [['game', 'Game art'], ['photo', 'Photo'], ['plain', 'Plain']] },
@@ -117,7 +118,7 @@ function control(row) {
       let src = null;
       try { src = localStorage.getItem('st-bg-photo'); } catch { /* storage off */ }
       return `<div class="bgpick">${src ? `<span class="bgpick__thumb" style="background-image:url('${esc(src)}')"></span>` : '<span class="bgpick__thumb bgpick__thumb--empty">No photo</span>'}
-        <label class="btn btn--ghost btn--sm">${icon('upload', 'i i--sm')}Choose a photo<input type="file" accept="image/jpeg,image/png,image/webp,image/gif" data-bg-file hidden></label>
+        <label class="btn btn--ghost btn--sm">${icon('upload', 'i i--sm')}Choose a photo<input type="file" accept="image/*" data-bg-file hidden></label>
         ${src ? '<button type="button" class="btn btn--ghost btn--sm" data-bg-clear>Remove</button>' : ''}</div>`;
     }
     case 'homesections': {
@@ -230,26 +231,34 @@ async function aiPane() {
   <div class="set-group"><div class="set-row"><div><p class="set-row__label">Try it</p><p class="set-row__desc">Opens AI search with an example request. Price advice is on every game page, under "Prices at other stores".</p></div><a class="btn btn--ghost btn--sm" href="#/ai/${encodeURIComponent('cozy co-op games under $20')}" data-close-settings>Try an example</a></div></div>`;
 }
 
-/** A chosen photo, shrunk to at most 2560 px wide and stored as a JPEG (it has to fit in local storage). */
-function shrinkPhoto(file) {
-  if (file.size > 40 * 1048576) return Promise.reject(new Error('That photo is over 40 MB. Pick a smaller one.'));
-  return new Promise((resolve, reject) => {
-    const url = URL.createObjectURL(file);
-    const img = new Image();
-    img.onload = () => {
-      URL.revokeObjectURL(url);
-      const scale = Math.min(1, 2560 / img.naturalWidth, 1600 / img.naturalHeight);
-      const c = document.createElement('canvas');
-      c.width = Math.round(img.naturalWidth * scale); c.height = Math.round(img.naturalHeight * scale);
-      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
-      let q = 0.86;
-      let out = c.toDataURL('image/jpeg', q);
-      while (out.length > 2.6e6 && q > 0.45) { q -= 0.1; out = c.toDataURL('image/jpeg', q); }
-      resolve(out);
-    };
-    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("That file isn't a picture this app can read.")); };
-    img.src = url;
-  });
+/**
+ * A chosen photo, shrunk to at most 2560 px wide and stored as a JPEG (it has to fit in local storage).
+ * The file is decoded directly (createImageBitmap) or read as a data: address: the app's security
+ * policy doesn't let images load from blob: addresses.
+ */
+async function shrinkPhoto(file) {
+  if (file.size > 40 * 1048576) throw new Error('That photo is over 40 MB. Pick a smaller one.');
+  let src;
+  try { src = await createImageBitmap(file); } catch {
+    src = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onerror = () => reject(new Error("That file couldn't be read."));
+      reader.onload = () => { const img = new Image(); img.onload = () => resolve(img); img.onerror = () => reject(new Error("That file isn't a picture this app can read. Try a JPEG, PNG or WebP photo.")); img.src = reader.result; };
+      reader.readAsDataURL(file);
+    });
+  }
+  const w = src.width || src.naturalWidth;
+  const h = src.height || src.naturalHeight;
+  if (!w || !h) throw new Error("That file isn't a picture this app can read. Try a JPEG, PNG or WebP photo.");
+  const scale = Math.min(1, 2560 / w, 1600 / h);
+  const c = document.createElement('canvas');
+  c.width = Math.round(w * scale); c.height = Math.round(h * scale);
+  c.getContext('2d').drawImage(src, 0, 0, c.width, c.height);
+  src.close?.();
+  let q = 0.86;
+  let out = c.toDataURL('image/jpeg', q);
+  while (out.length > 2.6e6 && q > 0.45) { q -= 0.1; out = c.toDataURL('image/jpeg', q); }
+  return out;
 }
 
 /** Use a photo (data URL or the address of a game's art) as the backdrop. */
@@ -340,6 +349,11 @@ async function appPane() {
 function aboutPane() {
   return `<div class="about-mark">${document.querySelector('.brand__mark')?.outerHTML || ''}<div><h4>Steam Redesigned</h4><p class="muted">Project Vanguard</p><p class="muted">Version ${esc(window.desktop?.version || window.mobileApp?.version || '3.0.0')}${window.desktop ? ' · Desktop app' : window.mobileApp ? ' · Android app' : ' · Browser'}</p></div></div>
   <p class="set-note">An unofficial concept. Game names, art, prices and community posts come from the public Steam store and Steam Community and belong to their owners. Catalog of ${db.all.length.toLocaleString('en-US')} games, updated ${ago(db.updated)}.</p>
+  <div class="set-group"><h4>Updates</h4>
+    <div class="set-row set-row--block"><div><p class="set-row__label">Get the newest version</p><p class="set-row__desc" data-latest>Checking for a newer version…</p></div>
+      <div class="ai-setup__btns"><a class="btn btn--primary btn--sm" href="${PAGES_URL}" target="_blank" rel="noopener">${icon('download', 'i i--sm')}Open the download page</a><a class="btn btn--ghost btn--sm" href="${RELEASES_URL}" target="_blank" rel="noopener">${icon('external', 'i i--sm')}What's new (GitHub)</a></div></div>
+    <p class="set-note">Downloads for Windows and Android are on the project's GitHub page: ${PAGES_URL.replace('https://', '')}. Install the new version over this one; your settings, wishlist and alerts stay.</p>
+  </div>
   <div class="set-group"><h4>Keyboard shortcuts</h4><div class="kbd-list">
     <kbd>/</kbd><span>Search the store</span>
     <kbd>Ctrl + K</kbd><span>Search the store</span>
@@ -349,6 +363,25 @@ function aboutPane() {
     <kbd>W</kbd><span>Wishlist the current game in the discovery queue</span>
     <kbd>Esc</kbd><span>Close menus and this window</span>
   </div></div>`;
+}
+
+const PAGES_URL = 'https://projection-of-vanguard.github.io';
+const RELEASES_URL = 'https://github.com/Projection-Of-Vanguard/project-vanguard/releases/latest';
+const appVersion = () => window.desktop?.version || window.mobileApp?.version || null;
+/** "3.10.0" > "3.9.2" */
+const newer = (a, b) => { const x = String(a).split('.').map(Number); const y = String(b).split('.').map(Number); for (let i = 0; i < 3; i++) { if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) > (y[i] || 0); } return false; };
+/** About: fill in whether a newer version is out. */
+async function checkLatest() {
+  const out = $('[data-latest]', dialog);
+  if (!out) return;
+  try {
+    const latest = await fetch('/api/latest', { cache: 'no-store' }).then((r) => (r.ok ? r.json() : null));
+    const mine = appVersion();
+    if (!latest?.version) throw new Error('no version');
+    out.innerHTML = !mine ? `The website is always up to date. The newest apps are version ${esc(latest.version)}.`
+      : newer(latest.version, mine) ? `<strong class="update-note">Version ${esc(latest.version)} is out.</strong> You have ${esc(mine)}. Download it from the GitHub page.`
+      : `You have the newest version (${esc(mine)}).`;
+  } catch { out.textContent = "Couldn't check for a newer version right now. The GitHub page always has the newest one."; }
 }
 
 /* --------------------------------------------------------------- render */
@@ -382,6 +415,7 @@ async function render(animate = true) {
   $('.settings__head p', dialog).textContent = query ? '' : s.desc;
   const body = $('.settings__body', dialog);
   body.innerHTML = await bodyHTML();
+  if (current === 'about' && !query) checkLatest();
   if (animate) { body.classList.remove('is-swapping'); void body.offsetWidth; body.classList.add('is-swapping'); }
 }
 

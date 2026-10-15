@@ -208,7 +208,7 @@ function openViewer(items, start, cleanups) {
     const [c] = media[pos];
     const g = db.byId.get(c.appid);
     lb.innerHTML = `<figure class="ugc-view">
-      ${c.youtube ? `<iframe src="https://www.youtube-nocookie.com/embed/${esc(c.youtube)}?autoplay=1" title="${esc(c.title || 'Video')}" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>` : `<img src="${esc(c.big || c.img)}" alt="${esc(c.title || TYPE_LABEL[c.type] || '')}">`}
+      ${c.youtube ? `<iframe referrerpolicy="strict-origin-when-cross-origin" src="https://www.youtube-nocookie.com/embed/${esc(c.youtube)}?autoplay=1" title="${esc(c.title || 'Video')}" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>` : `<img src="${esc(c.big || c.img)}" alt="${esc(c.title || TYPE_LABEL[c.type] || '')}">`}
       <figcaption>
         <div>${c.title ? `<p class="ugc-view__title">${esc(c.title)}</p>` : ''}<p class="ugc-view__by">${author(c)}${g || c.appName ? ` in <a href="#/community/app/${c.appid}">${esc(c.appName || g.name)}</a>` : ''}</p></div>
         <div class="ugc-view__actions">${c.likes ? `<span class="ugc__stat">${icon('thumb-up', 'i i--sm')}${num(c.likes)}</span>` : ''}<a class="btn btn--ghost btn--sm" href="${esc(c.url)}" target="_blank" rel="noopener">View on Steam Community</a></div>

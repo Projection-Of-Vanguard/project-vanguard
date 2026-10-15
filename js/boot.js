@@ -58,6 +58,7 @@
     bgSource: 'game', bgBlur: 0, bgDim: 60, bgDrift: false,
     music: '', // a soundtrack key from js/music.js, '' for none
     startPage: 'home', cards: 'medium', homeHide: [],
+    mascot: true, // Vanguard, the AI helper in the corner
     // Animations
     motion: 'system', speed: 1, transition: 'morph', morph: true, hover: 'zoom', stagger: true,
     autoplay: true, autoplaySec: 7, parallax: true, shimmer: true,
