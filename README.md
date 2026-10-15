@@ -159,8 +159,6 @@ Step 2b, the Android app: `node tools/build-android.mjs` builds `dist/android/St
 
 Step 6, the home server: `node tools/build-home-server.mjs` refreshes the `ProjectServer` folder next to this one (it keeps that folder's `config.json` and data).
 
-Step 7, the Microsoft Store: `npm run dist:store` builds `dist-store/Steam-Redesigned-<version>.appx`, which Microsoft signs when it passes certification. See [docs/MICROSOFT-STORE.md](docs/MICROSOFT-STORE.md) for the free developer account, the app identity and the submission.
-
 ## Folder
 
 | Path | What it is |

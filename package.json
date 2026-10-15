@@ -10,8 +10,7 @@
     "start": "electron .",
     "serve": "node server.mjs",
     "dist": "node tools/build-installer.mjs",
-    "icon": "node tools/make-icon.mjs",
-    "dist:store": "node tools/build-store.mjs"
+    "icon": "node tools/make-icon.mjs"
   },
   "dependencies": {
     "@vercel/blob": "2.8.1"
@@ -124,20 +123,6 @@
       "shortcutName": "Steam Redesigned",
       "runAfterFinish": true,
       "artifactName": "Steam-Redesigned-${version}.${ext}"
-    },
-    "appx": {
-      "applicationId": "SteamRedesigned",
-      "displayName": "Steam Redesigned",
-      "publisherDisplayName": "Project Vanguard",
-      "backgroundColor": "#0b1424",
-      "languages": [
-        "en-US"
-      ],
-      "showNameOnTiles": false,
-      "customExtensionsPath": "tools/appx-extensions.xml",
-      "artifactName": "Steam-Redesigned-${version}.${ext}",
-      "minVersion": "10.0.17763.0",
-      "maxVersionTested": "10.0.26100.0"
     }
   },
   "repository": {

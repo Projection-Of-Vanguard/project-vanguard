@@ -6,8 +6,6 @@ contextBridge.exposeInMainWorld('desktop', {
   isApp: true,
   version: (process.argv.find((a) => a.startsWith('--app-version=')) || '').slice(14) || '3.0.0',
   platform: process.platform,
-  store: process.argv.includes('--store'), // installed from the Microsoft Store
-  openStartupSettings: () => ipcRenderer.send('app:open-startup-settings'),
   getSettings: () => ipcRenderer.invoke('app:get-settings'),
   setSetting: (key, value) => ipcRenderer.invoke('app:set-setting', String(key), Boolean(value)),
   openDataFolder: () => ipcRenderer.invoke('app:open-data'),

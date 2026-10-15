@@ -1,6 +1,0 @@
-{
-  "_comment": "From Partner Center > your app > Product management > Product identity. Replace the three values, then run: npm run dist:store",
-  "identityName": "ProjectVanguard.SteamRedesigned",
-  "publisher": "CN=00000000-0000-0000-0000-000000000000",
-  "publisherDisplayName": "Project Vanguard"
-}

@@ -1,3 +1,0 @@
-        <desktop:Extension Category="windows.startupTask" Executable="app\SteamRedesigned.exe" EntryPoint="Windows.FullTrustApplication">
-          <desktop:StartupTask TaskId="SteamRedesignedStartup" Enabled="false" DisplayName="Steam Redesigned" />
-        </desktop:Extension>

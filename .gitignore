@@ -3,7 +3,6 @@ data/
 # Build output
 dist/
 dist-seed/
-dist-store/
 node_modules/
 # Generated website (tools/build-web.mjs) and its Vercel link and env files
 web/

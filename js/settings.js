@@ -338,9 +338,8 @@ async function appPane() {
   const row = (key, label, desc) => `<div class="set-row"><div><p class="set-row__label">${label}</p><p class="set-row__desc">${desc}</p></div><button type="button" class="switch" role="switch" aria-checked="${!!a[key]}" data-app="${key}" aria-label="${esc(label)}"></button></div>`;
   return `<div class="set-group">
     ${row('closeToTray', 'Close to the system tray', 'The close button hides the window and keeps the catalog updating. Quit from the tray icon.')}
-    ${a.store ? `<div class="set-row"><div><p class="set-row__label">Start with Windows</p><p class="set-row__desc">Switch on "Steam Redesigned" in Windows Settings &gt; Apps &gt; Startup to open the app when you sign in.</p></div><button type="button" class="btn btn--ghost btn--sm" data-app-open="startup">${icon('external', 'i i--sm')}Startup settings</button></div>`
-      : `${row('startWithWindows', 'Start with Windows', 'Open the app when you sign in.')}
-    ${row('startMinimized', 'Start in the tray', 'When starting with Windows, stay in the tray until you open it.')}`}
+    ${row('startWithWindows', 'Start with Windows', 'Open the app when you sign in.')}
+    ${row('startMinimized', 'Start in the tray', 'When starting with Windows, stay in the tray until you open it.')}
     ${row('hardwareAcceleration', 'Hardware acceleration', 'Use the graphics card for smoother animation. Takes effect after a restart.')}
     ${row('autoUpdate', 'Update the catalog on start', 'Refresh games, prices and player counts every time the app opens.')}
   </div>
@@ -353,7 +352,7 @@ function aboutPane() {
   <div class="set-group"><h4>Updates</h4>
     <div class="set-row set-row--block"><div><p class="set-row__label">Get the newest version</p><p class="set-row__desc" data-latest>Checking for a newer version…</p></div>
       <div class="ai-setup__btns"><a class="btn btn--primary btn--sm" href="${PAGES_URL}" target="_blank" rel="noopener">${icon('download', 'i i--sm')}Open the download page</a><a class="btn btn--ghost btn--sm" href="${RELEASES_URL}" target="_blank" rel="noopener">${icon('external', 'i i--sm')}What's new (GitHub)</a></div></div>
-    <p class="set-note">${window.desktop?.store ? 'This copy came from the Microsoft Store, which installs new versions for you. ' : ''}Downloads for Windows and Android are on the project's GitHub page: ${PAGES_URL.replace('https://', '')}. Install the new version over this one; your settings, wishlist and alerts stay.</p>
+    <p class="set-note">Downloads for Windows and Android are on the project's GitHub page: ${PAGES_URL.replace('https://', '')}. Install the new version over this one; your settings, wishlist and alerts stay.</p>
   </div>
   <div class="set-group"><h4>Keyboard shortcuts</h4><div class="kbd-list">
     <kbd>/</kbd><span>Search the store</span>
@@ -538,7 +537,6 @@ function build() {
     }
     const app = t.closest('[data-app]');
     if (app) { const on = app.getAttribute('aria-checked') !== 'true'; await window.desktop.setSetting(app.dataset.app, on); app.setAttribute('aria-checked', String(on)); return; }
-    if (t.closest('[data-app-open="startup"]')) return window.desktop.openStartupSettings?.();
     if (t.closest('[data-app-open]')) return window.desktop.openDataFolder();
     if (t.closest('[data-export]')) return exportPrefs();
     if (t.closest('[data-import]')) return $('[data-import-file]', dialog).click();
