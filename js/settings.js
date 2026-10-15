@@ -4,13 +4,15 @@
 import { db, getSession, post, applyContentFilter } from './data.js';
 import { state, clearViewed, clearList } from './state.js';
 import { $, $$, esc, icon, toast, ago, capHTML } from './ui.js';
+import { deviceAI, aiWhere } from './ai.js';
+import { PROVIDERS, cleanConfig, listModels } from './llm.js';
+import { musicPaneHTML } from './music.js';
 
 const P = () => window.STPrefs;
 const ACCENTS = [
   ['#1a9fff', 'Steam blue'], ['#22d3ee', 'Cyan'], ['#8b5cf6', 'Violet'], ['#10b981', 'Emerald'],
   ['#f59e0b', 'Amber'], ['#f43f5e', 'Rose'], ['#84cc16', 'Lime'], ['#e5e7eb', 'Silver'],
 ];
-const MODEL_LABELS = { 'claude-opus-5-5': 'Claude Opus 5.5 (best results)', 'claude-sonnet-5-5': 'Claude Sonnet 5.5 (balanced)', 'claude-haiku-5-5': 'Claude Haiku 5.5 (fastest, lowest cost)' };
 
 const SECTIONS = [
   { id: 'appearance', label: 'Appearance', icon: 'palette', desc: 'Colours, shapes and text size', rows: [
@@ -23,7 +25,11 @@ const SECTIONS = [
     { key: 'scale', type: 'range', label: 'Interface size', min: 80, max: 130, step: 5, unit: '%' },
   ] },
   { id: 'background', label: 'Background', icon: 'image', desc: 'The living backdrop behind every page', rows: [
-    { key: 'ambient', type: 'toggle', label: 'Game art backdrop', desc: 'Blurs the art of the game in focus behind the page and fades between games.' },
+    { key: 'bgSource', type: 'seg', label: 'Backdrop', desc: 'Game art blurs the art of the game in focus and fades between games. Photo shows a picture you choose.', options: [['game', 'Game art'], ['photo', 'Photo'], ['plain', 'Plain']] },
+    { key: 'bgPhoto', type: 'bgphoto', label: 'Background photo', desc: 'A picture from this device, or any game\'s art: open a game and choose "Set as background". It stays on this device.' },
+    { key: 'bgBlur', type: 'range', label: 'Photo blur', min: 0, max: 30, step: 2, unit: ' px' },
+    { key: 'bgDim', type: 'range', label: 'Photo dimming', desc: 'Darkens the photo so text stays easy to read.', min: 0, max: 85, step: 5, unit: '%' },
+    { key: 'bgDrift', type: 'toggle', label: 'Slow drift', desc: 'The photo moves very slowly, like a living wallpaper. Off when motion is reduced.' },
     { key: 'ambientStrength', type: 'range', label: 'Backdrop strength', min: 0, max: 100, step: 5, unit: '%' },
     { key: 'grid', type: 'toggle', label: 'Blueprint grid', desc: 'A faint grid at the top of the page.' },
     { key: 'grain', type: 'toggle', label: 'Film grain', desc: 'A subtle texture over the backdrop.' },
@@ -49,6 +55,9 @@ const SECTIONS = [
     { key: 'hideOwned', type: 'toggle', label: 'Hide games I own', desc: 'Games you mark "I own this" stay out of lists and recommendations.' },
     { key: 'hideIgnored', type: 'toggle', label: 'Hide "Not interested" games', desc: 'Games you dismissed stay out of lists. Clear the list in Catalog & data.' },
     { key: 'saleAlerts', type: 'toggle', label: 'Wishlist sale alerts', desc: 'Tell me when a wishlisted game goes on sale.' },
+    { key: 'startPage', type: 'select', label: 'Start page', desc: 'What opens when the app starts.', options: [['home', 'Home'], ['specials', 'Specials'], ['mostplayed', 'Most played'], ['foryou', 'Recommended for you'], ['wishlist', 'Your wishlist'], ['indie', 'Popular indie games'], ['community', 'Community']] },
+    { key: 'cards', type: 'seg', label: 'Card size', desc: 'How big game cards are in the rows that scroll sideways.', options: [['small', 'Small'], ['medium', 'Medium'], ['large', 'Large']] },
+    { key: 'homeHide', type: 'homesections', label: 'Home page sections', desc: 'Untick a section to hide it from the home page.' },
     { key: 'defaultSort', type: 'select', label: 'Default sort for lists', options: [['rel', 'Relevance'], ['top', 'Top sellers'], ['players', 'Most players'], ['new', 'Release date'], ['rev', 'User reviews'], ['pa', 'Lowest price'], ['disc', 'Biggest discount']] },
   ] },
   { id: 'community', label: 'Community', icon: 'chat', desc: 'The community feed and its animations', rows: [
@@ -59,13 +68,15 @@ const SECTIONS = [
     { key: 'viewerAnim', type: 'seg', label: 'Viewer opening', desc: 'How screenshots and art open full screen.', options: [['zoom', 'Zoom'], ['slide', 'Slide up'], ['fade', 'Fade'], ['none', 'None']] },
     { key: 'commentsAnim', type: 'seg', label: 'Comments opening', desc: 'How a comment thread opens under a post.', options: [['expand', 'Expand'], ['slide', 'Slide'], ['fade', 'Fade'], ['none', 'Instant']] },
   ] },
-  { id: 'ai', label: 'AI search', icon: 'sparkles', desc: 'Search by describing what you want', custom: 'ai' },
+  { id: 'ai', label: 'AI', icon: 'sparkles', desc: 'AI search and price advice, with a key from any AI provider', custom: 'ai' },
   { id: 'catalog', label: 'Catalog & data', icon: 'database', desc: 'Which games the store tracks', custom: 'catalog' },
+  { id: 'music', label: 'Music', icon: 'play', desc: 'Game soundtracks while you browse', custom: 'music' },
   { id: 'notifications', label: 'Notifications', icon: 'bell', desc: 'Pop-up messages', rows: [
     { key: 'toastPos', type: 'seg', label: 'Position', options: [['bottom-center', 'Bottom'], ['bottom-right', 'Bottom right'], ['top-right', 'Top right'], ['top-center', 'Top']] },
     { key: 'toastSec', type: 'range', label: 'Show for', min: 2, max: 10, step: 1, unit: ' s', test: true },
-    { key: 'notifyFree', type: 'toggle', label: 'New free games', desc: 'Android app: a notification when a game becomes free to keep. Checked about every hour.' },
-    { key: 'notifyDeals', type: 'toggle', label: 'Big deals', desc: 'Android app: a notification when a popular game, or one on your wishlist, drops 50% or more.' },
+    { key: 'notifyFree', type: 'toggle', label: 'New free games', desc: 'A notification when a game becomes free to keep. The Android app checks about every hour, even when closed; the desktop app while it runs; the website while it is open.' },
+    { key: 'notifyDeals', type: 'toggle', label: 'Big deals', desc: 'A notification when a popular game, or one on your wishlist, drops 50% or more.' },
+    { key: 'freeTest', type: 'freetest', label: 'Free game notification test', desc: "Sends a notification the way a free game alert arrives, and checks every setting that could stop one, so you don't miss a free game." },
   ] },
   { id: 'accessibility', label: 'Accessibility', icon: 'eye', desc: 'Readability and focus', rows: [
     { key: 'contrast', type: 'toggle', label: 'Higher contrast text', desc: 'Brighter secondary text and borders.' },
@@ -102,6 +113,18 @@ function control(row) {
     case 'themes':
       return `<div class="theme-cards" role="radiogroup" aria-label="Theme">${Object.entries(P().THEMES).map(([k, t]) => `<button type="button" class="theme-card" role="radio" aria-checked="${v === k}" data-key="theme" data-kind="seg" data-value="${k}">
         <span class="theme-card__preview" style="--p1:rgb(${t.ink[1]});--p2:rgb(${t.ink[2]});--p3:rgb(${t.ink[3]})"><i></i><i></i></span>${esc(t.label)}</button>`).join('')}</div>`;
+    case 'bgphoto': {
+      let src = null;
+      try { src = localStorage.getItem('st-bg-photo'); } catch { /* storage off */ }
+      return `<div class="bgpick">${src ? `<span class="bgpick__thumb" style="background-image:url('${esc(src)}')"></span>` : '<span class="bgpick__thumb bgpick__thumb--empty">No photo</span>'}
+        <label class="btn btn--ghost btn--sm">${icon('upload', 'i i--sm')}Choose a photo<input type="file" accept="image/jpeg,image/png,image/webp,image/gif" data-bg-file hidden></label>
+        ${src ? '<button type="button" class="btn btn--ghost btn--sm" data-bg-clear>Remove</button>' : ''}</div>`;
+    }
+    case 'homesections': {
+      const hidden = new Set(Array.isArray(v) ? v : []);
+      return `<div class="chipset" role="group" aria-label="Home page sections">${[['spot', 'Featured'], ['deals', 'Deals & events'], ['demos', 'Popular demos'], ['disc', 'Big discounts'], ['indie', 'Indie games'], ['cats', 'Categories'], ['mp', 'Most played'], ['panels', 'Hidden gems'], ['queue', 'Discovery queue'], ['budget', 'On a budget'], ['tabs', 'Store lists']].map(([k, l]) => `<button type="button" class="chipset__chip" aria-pressed="${!hidden.has(k)}" data-home-sec="${k}">${icon('check', 'i i--sm')}${esc(l)}</button>`).join('')}</div>`;
+    }
+    case 'freetest': return `<button type="button" class="btn btn--primary btn--sm" data-free-test>${icon('bell', 'i i--sm')}Send a test</button>`;
     case 'preview': return motionPreviewHTML();
     case 'cpreview': return communityPreviewHTML();
     default: return '';
@@ -161,42 +184,91 @@ function replay(el, cls) { el.classList.remove(cls); void el.offsetWidth; el.cla
 const fmt = (row, v) => (row.unit === '×' ? `${(+v).toFixed(2).replace(/0$/, '')}×` : `${v}${row.unit || ''}`);
 
 function rowHTML(row, sectionLabel) {
-  const block = ['themes', 'accent', 'preview', 'cpreview'].includes(row.type);
+  const block = ['themes', 'accent', 'preview', 'cpreview', 'homesections'].includes(row.type);
   return `<div class="set-row${block ? ' set-row--block' : ''}" data-row="${row.key}">
     <div>${sectionLabel ? `<p class="set-row__found">${esc(sectionLabel)}</p>` : ''}<p class="set-row__label">${esc(row.label)}</p>${row.desc ? `<p class="set-row__desc">${esc(row.desc)}</p>` : ''}</div>
     ${control(row)}
     ${row.demo ? '<div class="motion-demo" aria-hidden="true" style="grid-column:1/-1"><i></i></div>' : ''}
     ${row.test ? '<div style="grid-column:1/-1"><button type="button" class="btn btn--ghost btn--sm" data-test-toast>Show a test message</button></div>' : ''}
+    ${row.type === 'freetest' ? '<ul class="free-test" data-free-result hidden></ul>' : ''}
   </div>`;
 }
 
 /* --------------------------------------------------------- custom panes */
 
+let aiDraft = null; // provider picked in the form before it's saved
 async function aiPane() {
-  const s = await getSession(true);
-  const c = s.config;
-  if (c.publicSite) {
-    return `<div class="set-group"><p class="set-note">${window.mobileApp ? 'In the Android app' : 'On the website'}, Ask AI uses the built-in offline smart search, so no account or key is needed. The desktop app can also use Claude with your own Anthropic API key, stored encrypted on your PC.</p>
-      <div class="set-row"><div><p class="set-row__label">Get the desktop app</p><p class="set-row__desc">Free download for Windows 10 and 11.</p></div><a class="btn btn--primary btn--sm" href="#/download" data-close-settings>Download</a></div></div>`;
-  }
-  const status = c.aiConfigured
-    ? `<span class="set-status set-status--ok">${icon('check', 'i i--sm')}Connected${c.aiKeySource === 'environment' ? ' (key from ANTHROPIC_API_KEY)' : ''}</span>`
-    : '<span class="set-status set-status--warn">No API key yet. Offline smart search is used instead.</span>';
+  const where = await aiWhere();
+  const sess = await getSession(true);
+  const dev = deviceAI.get();
+  const saved = where === 'server' ? sess.config.ai : dev && { provider: dev.provider, model: dev.model, base: dev.base };
+  const provider = aiDraft || saved?.provider || 'gemini';
+  const p = PROVIDERS[provider];
+  const name = (id) => PROVIDERS[id].label.replace(/ \(.*\)$/, '');
+  const same = saved?.provider === provider;
+  const status = saved
+    ? `<span class="set-status set-status--ok">${icon('check', 'i i--sm')}Connected: ${esc(name(saved.provider))} · ${esc(saved.model)}${saved.source === 'environment' ? ' (key from ANTHROPIC_API_KEY)' : ''}</span>`
+    : '<span class="set-status set-status--warn">Not connected. AI search uses the offline smart search, and price advice is off.</span>';
+  const options = Object.entries(PROVIDERS).filter(([, x]) => where === 'server' || !x.desktopOnly)
+    .map(([id, x]) => `<option value="${id}"${id === provider ? ' selected' : ''}>${esc(x.label)}${x.note ? ` (${esc(x.note)})` : ''}</option>`).join('');
   return `<div class="set-group">
-    <div class="set-row set-row--block"><div><p class="set-row__label">Status</p><p class="set-row__desc">AI search sends only the words you type to Anthropic's API to turn them into search filters. Results come from this store's catalog.</p></div>${status}</div>
-    <div class="set-row"><div><p class="set-row__label">Use AI search</p><p class="set-row__desc">When off, the search bar's AI button uses the offline parser.</p></div>
-      <button type="button" class="switch" role="switch" aria-checked="${c.aiEnabled}" data-server="aiEnabled" aria-label="Use AI search"></button></div>
-    <div class="set-row"><div><p class="set-row__label">Model</p><p class="set-row__desc">Billed to your Anthropic account. A search uses about 5,000 input tokens (mostly cached) and a few hundred output tokens.</p></div>
-      <select data-server="aiModel" aria-label="AI model">${c.aiModels.map((m) => `<option value="${m}"${m === c.aiModel ? ' selected' : ''}>${esc(MODEL_LABELS[m] || m)}</option>`).join('')}</select></div>
-    ${c.aiKeySource === 'environment' ? '' : `<div class="set-row set-row--block"><div><p class="set-row__label">Anthropic API key</p><p class="set-row__desc">Stored on this computer${window.desktop ? ', encrypted with your Windows account' : ' in data/secrets.json'}, and never sent back to the page. Create one at console.anthropic.com.</p></div>
-      <form class="set-input" data-key-form autocomplete="off">
-        <label class="sr-only" for="ai-key">API key</label>
-        <input id="ai-key" type="password" placeholder="${c.aiConfigured ? 'Saved. Paste a new key to replace it' : 'sk-ant-...'}" spellcheck="false" autocomplete="off">
-        <button type="submit" class="btn btn--primary btn--sm">Save key</button>
-        ${c.aiConfigured ? '<button type="button" class="btn btn--ghost btn--sm" data-key-remove>Remove key</button>' : ''}
-      </form></div>`}
-    <div class="set-row"><div><p class="set-row__label">Try it</p><p class="set-row__desc">Opens AI search with an example request.</p></div><a class="btn btn--ghost btn--sm" href="#/ai/${encodeURIComponent('cozy co-op games under $20')}" data-close-settings>Try an example</a></div>
-  </div>`;
+    <div class="set-row set-row--block"><div><p class="set-row__label">Status</p><p class="set-row__desc">AI search and price advice send only your request and public game facts (name and prices) to the AI you connect. Any provider's key works: Google Gemini and Groq give free keys.</p></div>${status}</div>
+    ${where === 'server' ? `<div class="set-row"><div><p class="set-row__label">Use AI</p><p class="set-row__desc">When off, AI search uses the offline parser and price advice is hidden.</p></div>
+      <button type="button" class="switch" role="switch" aria-checked="${sess.config.aiEnabled}" data-server="aiEnabled" aria-label="Use AI"></button></div>` : ''}
+  </div>
+  <div class="set-group"><h4>Connect an AI</h4>
+    <form class="ai-setup" data-ai-setup autocomplete="off">
+      <label class="set-field"><span>Provider</span><select data-ai-provider>${options}</select></label>
+      ${p.keys ? `<p class="set-row__desc ai-setup__hint">Don't have a key? <a href="${p.keys}" target="_blank" rel="noopener">Get a ${esc(name(provider))} API key</a>${p.note ? `. ${esc(p.note)}.` : '.'}</p>` : `<p class="set-row__desc ai-setup__hint">${esc(p.note || '')}. Point it at the server's OpenAI-style address.</p>`}
+      ${provider === 'custom' ? `<label class="set-field"><span>Server address</span><input data-ai-base value="${esc((same && saved.base) || '')}" placeholder="http://localhost:11434/v1" spellcheck="false"></label>` : ''}
+      <label class="set-field"><span>API key</span><input type="password" data-ai-key placeholder="${same ? 'Saved. Paste a new key to replace it' : esc(p.hint || 'Paste your key')}" spellcheck="false" autocomplete="off"></label>
+      <label class="set-field"><span>Model</span><input data-ai-model list="ai-models" value="${esc(same ? saved.model : p.models[0] || '')}" spellcheck="false" placeholder="Model name"><datalist id="ai-models">${p.models.map((m) => `<option value="${esc(m)}">`).join('')}</datalist></label>
+      <div class="ai-setup__btns"><button type="button" class="btn btn--ghost btn--sm" data-ai-load>${icon('refresh', 'i i--sm')}Load my models</button><button type="submit" class="btn btn--primary btn--sm">Save and test</button>${saved ? '<button type="button" class="btn btn--ghost btn--sm" data-ai-remove>Disconnect</button>' : ''}</div>
+      <p class="set-note">${where === 'server' ? 'The key is stored on this computer, encrypted with your Windows account, and never sent back to the page.' : `The key is stored only ${window.mobileApp ? 'in this app on this phone' : 'in this browser'} and goes straight to ${esc(name(provider))}, never to Project Vanguard's servers.`}</p>
+    </form>
+  </div>
+  <div class="set-group"><div class="set-row"><div><p class="set-row__label">Try it</p><p class="set-row__desc">Opens AI search with an example request. Price advice is on every game page, under "Prices at other stores".</p></div><a class="btn btn--ghost btn--sm" href="#/ai/${encodeURIComponent('cozy co-op games under $20')}" data-close-settings>Try an example</a></div></div>`;
+}
+
+/** A chosen photo, shrunk to at most 2560 px wide and stored as a JPEG (it has to fit in local storage). */
+function shrinkPhoto(file) {
+  if (file.size > 40 * 1048576) return Promise.reject(new Error('That photo is over 40 MB. Pick a smaller one.'));
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const scale = Math.min(1, 2560 / img.naturalWidth, 1600 / img.naturalHeight);
+      const c = document.createElement('canvas');
+      c.width = Math.round(img.naturalWidth * scale); c.height = Math.round(img.naturalHeight * scale);
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+      let q = 0.86;
+      let out = c.toDataURL('image/jpeg', q);
+      while (out.length > 2.6e6 && q > 0.45) { q -= 0.1; out = c.toDataURL('image/jpeg', q); }
+      resolve(out);
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("That file isn't a picture this app can read.")); };
+    img.src = url;
+  });
+}
+
+/** Use a photo (data URL or the address of a game's art) as the backdrop. */
+export function setBackgroundPhoto(src) {
+  try { localStorage.setItem('st-bg-photo', src); } catch { throw new Error('There is no room to store that photo on this device.'); }
+  P().set({ bgSource: 'photo' });
+}
+
+/** The form's provider setup. */
+function aiForm() {
+  const v = (sel) => $(sel, dialog)?.value.trim() || '';
+  return { provider: v('[data-ai-provider]'), key: v('[data-ai-key]'), model: v('[data-ai-model]'), base: v('[data-ai-base]') };
+}
+/** The models this key can use (checks the key too). */
+async function aiModels(form) {
+  if (await aiWhere() === 'server') return (await post('/api/ai-models', form)).models;
+  const saved = deviceAI.get();
+  const key = form.key || (saved?.provider === form.provider ? saved.key : '');
+  return listModels(cleanConfig({ ...form, key, model: form.model || 'any' }));
 }
 
 /** Android app: a PC running ProjectServer on the same Wi-Fi serves data, photos and deal notifications. */
@@ -204,7 +276,7 @@ function homeServerBlock() {
   const a = window.mobileApp;
   if (!a) return '';
   const status = a.usingHome ? `<span class="set-status set-status--ok">${icon('check', 'i i--sm')}Connected to ${esc(a.homeServer)}</span>`
-    : a.homeServer ? '<span class="set-status set-status--warn">Not reachable right now, so the online service is used</span>' : '';
+    : a.homeServer ? `<span class="set-status set-status--warn">Not in use: ${esc(a.homeError || 'it could not be reached')}. The online service is used meanwhile, and the app keeps checking.</span>` : '';
   return `<div class="set-group"><h4>Home server</h4>
     <div class="set-row set-row--block"><div><p class="set-row__label">Home server address</p><p class="set-row__desc">A PC on your Wi-Fi running the Project Vanguard home server keeps games, details and photos ready for this phone, refreshes them every hour and sends free game and deal notifications. Enter the address its window shows. Away from home, the app uses the online service.</p></div>${status}
       <form class="set-input" data-home-form autocomplete="off">
@@ -246,7 +318,6 @@ function deviceData() {
   return `<div class="set-group set-danger"><h4>Your data on this device</h4>
     <div class="set-row"><div><p class="set-row__label">Recently viewed</p><p class="set-row__desc">${state.viewed.length} games</p></div><button type="button" class="btn btn--ghost btn--sm" data-clear="viewed">Clear</button></div>
     <div class="set-row"><div><p class="set-row__label">Wishlist</p><p class="set-row__desc">${state.wish.size} games</p></div><button type="button" class="btn btn--ghost btn--sm" data-clear="wish">Clear</button></div>
-    <div class="set-row"><div><p class="set-row__label">Cart</p><p class="set-row__desc">${state.cart.length} games</p></div><button type="button" class="btn btn--ghost btn--sm" data-clear="cart">Clear</button></div>
     <div class="set-row"><div><p class="set-row__label">Owned games</p><p class="set-row__desc">${state.owned.size} games marked "I own this"</p></div><button type="button" class="btn btn--ghost btn--sm" data-clear="owned">Clear</button></div>
     <div class="set-row"><div><p class="set-row__label">Recommendation feedback</p><p class="set-row__desc">${state.liked.size} "More like this", ${state.hiddenTags.size} hidden tags, ${Object.keys(state.targets).length} price alerts</p></div><button type="button" class="btn btn--ghost btn--sm" data-clear="liked">Clear likes</button><button type="button" class="btn btn--ghost btn--sm" data-clear="hiddenTags">Show hidden tags</button><button type="button" class="btn btn--ghost btn--sm" data-clear="targets">Remove alerts</button></div>
     <div class="set-row"><div><p class="set-row__label">"Not interested" games</p><p class="set-row__desc">${state.ignored.size} games hidden from your discovery queue</p></div><button type="button" class="btn btn--ghost btn--sm" data-clear="ignored">Clear</button></div>
@@ -276,7 +347,7 @@ function aboutPane() {
     <kbd>Alt + ←</kbd><span>Back</span>
     <kbd>← →</kbd><span>Featured games, screenshots and discovery queue</span>
     <kbd>W</kbd><span>Wishlist the current game in the discovery queue</span>
-    <kbd>Esc</kbd><span>Close menus, the cart and this window</span>
+    <kbd>Esc</kbd><span>Close menus and this window</span>
   </div></div>`;
 }
 
@@ -300,6 +371,7 @@ async function bodyHTML() {
   if (s.custom === 'catalog') return catalogPane();
   if (s.custom === 'app') return appPane();
   if (s.custom === 'about') return aboutPane();
+  if (s.custom === 'music') return musicPaneHTML();
   return `<div class="set-group">${s.rows.map((r) => rowHTML(r)).join('')}</div>`;
 }
 
@@ -364,7 +436,58 @@ function build() {
       setTimeout(() => location.reload(), 900);
       return;
     }
-    if (t.closest('[data-key-remove]')) { try { await post('/api/ai-key', { key: null }); toast('API key removed'); } catch (err) { toast(err.message); } return render(false); }
+    const sec = t.closest('[data-home-sec]');
+    if (sec) {
+      const hidden = new Set(P().get().homeHide || []);
+      const k = sec.dataset.homeSec;
+      if (hidden.has(k)) hidden.delete(k); else hidden.add(k);
+      setPref('homeHide', [...hidden], false);
+      sec.setAttribute('aria-pressed', String(!hidden.has(k)));
+      return;
+    }
+    const ost = t.closest('[data-ost]');
+    if (ost) {
+      P().set({ music: ost.dataset.ost });
+      if (ost.dataset.ost) toast('Press play in the player in the corner. It keeps playing while you browse');
+      return render(false);
+    }
+    if (t.closest('[data-bg-clear]')) {
+      try { localStorage.removeItem('st-bg-photo'); } catch { /* storage off */ }
+      document.documentElement.style.removeProperty('--bg-photo');
+      setPref('bgSource', 'game');
+      toast('Background photo removed');
+      return render(false);
+    }
+    if (t.closest('[data-free-test]')) {
+      const btn = t.closest('[data-free-test]');
+      const out = $('[data-free-result]', dialog);
+      btn.disabled = true;
+      try {
+        const { testFreeGame } = await import('./alerts.js');
+        const report = await testFreeGame();
+        out.innerHTML = report.map((r) => `<li class="${r.ok ? 'is-ok' : 'is-warn'}">${icon(r.ok ? 'check' : 'info', 'i i--sm')}<span>${esc(r.text)}</span></li>`).join('');
+        out.hidden = false;
+      } catch (err) { toast(err.message || 'The test could not run'); }
+      btn.disabled = false;
+      return;
+    }
+    if (t.closest('[data-ai-remove]')) {
+      try { if (await aiWhere() === 'server') await post('/api/ai-key', { provider: null }); else deviceAI.clear(); aiDraft = null; toast('AI disconnected'); } catch (err) { toast(err.message); }
+      return render(false);
+    }
+    if (t.closest('[data-ai-load]')) {
+      const btn = t.closest('[data-ai-load]');
+      btn.disabled = true;
+      try {
+        const models = await aiModels(aiForm());
+        $('#ai-models', dialog).innerHTML = models.map((m) => `<option value="${esc(m)}">`).join('');
+        const input = $('[data-ai-model]', dialog);
+        if (!models.includes(input.value) && models[0]) input.value = models[0];
+        toast(models.length ? `Found ${models.length} models for this key. Pick one in the Model box` : 'The key works, but the provider listed no chat models');
+      } catch (err) { toast(err.message); }
+      btn.disabled = false;
+      return;
+    }
     if (t.closest('[data-refresh]')) { try { await post('/api/refresh', {}); toast('Updating the catalog in the background'); } catch (err) { toast(err.message); } return render(false); }
     const clr = t.closest('[data-clear]');
     if (clr) {
@@ -399,6 +522,13 @@ function build() {
     if (t.dataset.kind === 'select') setPref(t.dataset.key, t.value);
     if (t.dataset.kind === 'range' && t.dataset.key === 'scale') setPref('scale', +t.value, false);
     if (t.dataset.kind === 'color') render(false);
+    if (t.matches('[data-ai-provider]')) { aiDraft = t.value; render(false); return; }
+    if (t.matches('[data-bg-file]')) {
+      const file = t.files?.[0];
+      if (!file) return;
+      try { await setBackgroundPhoto(await shrinkPhoto(file)); toast('Background photo set'); } catch (err) { toast(err.message); }
+      return render(false);
+    }
     if (t.matches('select[data-server]')) { try { await post('/api/config', { [t.dataset.server]: t.value }); toast('Saved'); } catch (err) { toast(err.message); } }
     if (t.matches('[data-import-file]') && t.files[0]) {
       try { const data = JSON.parse(await t.files[0].text()); P().replace(data.prefs || data); afterPrefChange({}); render(false); toast('Settings imported'); } catch { toast('That file is not a settings export'); }
@@ -426,13 +556,23 @@ function build() {
       }
       return;
     }
-    if (!e.target.matches('[data-key-form]')) return;
+    if (!e.target.matches('[data-ai-setup]')) return;
     e.preventDefault();
-    const input = $('#ai-key', dialog);
-    const key = input.value.trim();
-    if (!key) return;
-    try { await post('/api/ai-key', { key }); input.value = ''; toast('API key saved'); } catch (err) { toast(err.message); }
-    render(false);
+    const form = aiForm();
+    const btn = $('button[type="submit"]', e.target);
+    btn.disabled = true; btn.textContent = 'Testing…';
+    try {
+      const models = await aiModels(form); // fails when the provider rejects the key
+      if (form.model && models.length && !models.includes(form.model) && form.provider !== 'openrouter') throw new Error(`This key can't use "${form.model}". Pick a model from "Load my models".`);
+      if (await aiWhere() === 'server') await post('/api/ai-key', form);
+      else {
+        const saved = deviceAI.get();
+        deviceAI.set(cleanConfig({ ...form, key: form.key || (saved?.provider === form.provider ? saved.key : '') }));
+      }
+      aiDraft = null;
+      toast('AI connected. AI search and price advice are ready');
+      render(false);
+    } catch (err) { toast(err.message); btn.disabled = false; btn.textContent = 'Save and test'; }
   });
   dialog.addEventListener('cancel', (e) => { e.preventDefault(); close(); });
 }

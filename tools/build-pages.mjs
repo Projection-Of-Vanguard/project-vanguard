@@ -117,7 +117,7 @@ ${shots.map(([n, alt], i) => `          <figure class="shot${i === 0 ? ' shot--w
               <li>Official Windows, macOS, Linux and Steam Deck logos next to every game name.</li>
               <li>Live player counts, price and player history charts, and the lowest recorded price.</li>
               <li>Price alerts on your wishlist with Windows and Android notifications, side-by-side compare and a release calendar.</li>
-              <li>Search that forgives typos, plus AI search powered by Claude in the app.</li>
+              <li>Search that forgives typos, plus AI search and price advice with a key from any AI provider (Gemini and Groq give free keys).</li>
             </ul>
           </div>
           <div>
@@ -154,7 +154,7 @@ ${shots.map(([n, alt], i) => `          <figure class="shot${i === 0 ? ' shot--w
               <tr><th scope="row">Store, game pages, community, recommendations</th><td>Yes</td><td>Yes</td><td>Yes</td></tr>
               <tr><th scope="row">Opens instantly, full screen</th><td>Yes</td><td>Yes</td><td>In a browser tab</td></tr>
               <tr><th scope="row">Catalog refresh</th><td>Every 6 hours, or on demand</td><td>Daily</td><td>Daily</td></tr>
-              <tr><th scope="row">AI search with Claude</th><td>Yes, with your own API key</td><td>Built-in search</td><td>Built-in search</td></tr>
+              <tr><th scope="row">AI search and price advice</th><td>Yes, with your own key from any AI provider</td><td>Yes, with your own key</td><td>Yes, with your own key</td></tr>
               <tr><th scope="row">Catalog size and player limit settings</th><td>Yes</td><td>No</td><td>No</td></tr>
               <tr><th scope="row">System tray, notifications</th><td>Yes</td><td>No</td><td>No</td></tr>
               <tr><th scope="row">Runs on</th><td>Windows 10 and 11</td><td>Android 7 and later</td><td>Any browser</td></tr>
@@ -194,7 +194,7 @@ ${shots.map(([n, alt], i) => `          <figure class="shot${i === 0 ? ' shot--w
         </div>
 
         <h3 class="platform">${androidIcon}Android</h3>
-        <p class="platform__note">The store and community as a full-screen app. Your wishlist, cart and settings stay on your phone.</p>
+        <p class="platform__note">The store and community as a full-screen app. Your wishlist and settings stay on your phone.</p>
         <div class="files files--one">${file(dl.android, 'Android app (.apk)', 'For Android 7 and later. Download it on your phone, then open it to install.', true)}
         </div>
         <div class="install">
@@ -227,7 +227,7 @@ ${shots.map(([n, alt], i) => `          <figure class="shot${i === 0 ? ' shot--w
               <li>No remote control, no connection between copies and no hidden updates.</li>
               <li>Its local data server only answers the PC it runs on. Other devices on the network can't reach it.</li>
               <li>Refuses debugging switches, can't be turned into a script runner, and won't start if its files were modified.</li>
-              <li>Your Anthropic API key, if you add one, is encrypted with your Windows account.</li>
+              <li>Your AI provider key, if you add one, is encrypted with your Windows account.</li>
             </ul>
           </div>
           <div>

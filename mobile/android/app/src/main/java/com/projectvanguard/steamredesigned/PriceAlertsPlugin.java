@@ -66,6 +66,21 @@ public class PriceAlertsPlugin extends Plugin {
         }).start();
     }
 
+    /** Settings > Notifications > "Free game notification test" */
+    @PluginMethod
+    public void testNotification(PluginCall call) {
+        new Thread(() -> {
+            try {
+                PriceAlertWorker.schedule(getContext());
+                JSObject ret = JSObject.fromJSONObject(PriceAlertChecker.testFreeGame(getContext()));
+                ret.put("background", PriceAlertWorker.isScheduled(getContext()));
+                call.resolve(ret);
+            } catch (Exception e) {
+                call.reject("The test notification could not be sent");
+            }
+        }).start();
+    }
+
     @Override
     @PluginMethod
     public void requestPermissions(PluginCall call) {

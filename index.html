@@ -80,9 +80,11 @@
     <symbol id="i-target" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></symbol>
     <symbol id="i-plus" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="M12 5v14"/></symbol>
     <symbol id="i-compass" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m16.24 7.76-1.804 5.411a2 2 0 0 1-1.265 1.265L7.76 16.24l1.804-5.411a2 2 0 0 1 1.265-1.265z"/></symbol>
+    <symbol id="i-external" viewBox="0 0 24 24"><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></symbol>
   </svg>
 
   <div class="ambient" aria-hidden="true">
+    <div class="ambient__photo"></div>
     <div class="ambient__layer"></div>
     <div class="ambient__layer"></div>
     <div class="ambient__grid"></div>
@@ -118,9 +120,6 @@
       <div class="topbar__tools">
         <button class="iconbtn" type="button" data-action="wishlist" aria-label="Wishlist, 0 items">
           <svg class="i" aria-hidden="true"><use href="#i-heart"/></svg><span class="count" data-count="wish">0</span>
-        </button>
-        <button class="iconbtn" type="button" data-action="cart" aria-label="Cart, 0 items">
-          <svg class="i" aria-hidden="true"><use href="#i-cart"/></svg><span class="count" data-count="cart">0</span>
         </button>
         <button class="iconbtn update-btn" type="button" data-action="update" aria-label="Update the catalog now" title="Update now: refresh games, prices and player counts"><svg class="i" aria-hidden="true"><use href="#i-sync"/></svg><span class="update-btn__ring" aria-hidden="true"></span></button>
         <button class="iconbtn gear" type="button" data-action="settings" aria-label="Settings" aria-haspopup="dialog" aria-expanded="false" title="Settings (Ctrl + ,)"><svg class="i" aria-hidden="true"><use href="#i-gear"/></svg></button>
@@ -229,15 +228,6 @@
     </div>
   </div>
 
-  <div class="scrim" data-action="close-cart"></div>
-  <aside class="drawer" id="cart" role="dialog" aria-modal="true" aria-labelledby="cart-title" aria-hidden="true">
-    <div class="drawer__head">
-      <h2 id="cart-title">Your cart</h2>
-      <button class="iconbtn" type="button" data-action="close-cart" aria-label="Close cart"><svg class="i" aria-hidden="true"><use href="#i-x"/></svg></button>
-    </div>
-    <div class="drawer__list" data-slot="cart-list"></div>
-    <div class="drawer__foot" data-slot="cart-foot"></div>
-  </aside>
 
   <div class="compare-tray" hidden aria-live="polite"></div>
   <dialog class="lightbox" aria-label="Media viewer"></dialog>

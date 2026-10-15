@@ -197,6 +197,34 @@ final class PriceAlertChecker {
         }
     }
 
+    /**
+     * Settings > Notifications > "Free game notification test": posts one notification on the same
+     * channel free-game alerts use, and reports everything that could stop the real ones.
+     */
+    static JSONObject testFreeGame(Context ctx) throws Exception {
+        JSONObject r = new JSONObject();
+        boolean permission = Build.VERSION.SDK_INT < 33 || ContextCompat.checkSelfPermission(ctx, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED;
+        boolean appOn = NotificationManagerCompat.from(ctx).areNotificationsEnabled();
+        ensureChannel(ctx);
+        boolean channelOn = true;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            NotificationManager nm = ctx.getSystemService(NotificationManager.class);
+            NotificationChannel ch = nm == null ? null : nm.getNotificationChannel(DEALS_CHANNEL);
+            channelOn = ch == null || ch.getImportance() != NotificationManager.IMPORTANCE_NONE;
+        }
+        boolean free = prefs(ctx).getBoolean("notifyFree", true);
+        boolean sent = permission && appOn && channelOn;
+        if (sent) announce(ctx, DEALS_CHANNEL, 0, "Test: free game alerts work",
+            "This is how you'll hear when a game becomes free to keep. Turn these on or off in Settings > Notifications.", new JSONArray());
+        r.put("permission", permission);
+        r.put("appEnabled", appOn);
+        r.put("channelEnabled", channelOn);
+        r.put("notifyFree", free);
+        r.put("server", prefs(ctx).getString("server", ""));
+        r.put("sent", sent);
+        return r;
+    }
+
     static void ensureChannel(Context ctx) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return;
         NotificationManager nm = ctx.getSystemService(NotificationManager.class);

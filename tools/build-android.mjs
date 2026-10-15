@@ -10,6 +10,7 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { AI_HOSTS } from '../js/llm.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const MOBILE = path.join(ROOT, 'mobile');
@@ -32,7 +33,7 @@ fs.cpSync(path.join(ROOT, 'assets', 'fonts'), path.join(WWW, 'assets', 'fonts'),
 fs.copyFileSync(path.join(ROOT, 'assets', 'icon.png'), path.join(WWW, 'assets', 'icon.png'));
 const CSP = [
   "default-src 'self'", "script-src 'self'", "style-src 'self' 'unsafe-inline'", "img-src 'self' data: https:", "font-src 'self'",
-  `connect-src 'self' ${API}`, "media-src 'self' https:", 'frame-src https://www.youtube-nocookie.com', "object-src 'none'", "base-uri 'none'", "form-action 'self'",
+  `connect-src 'self' ${API} ${AI_HOSTS.join(' ')}`, "media-src 'self' https:", 'frame-src https://www.youtube-nocookie.com https://bandcamp.com', "object-src 'none'", "base-uri 'none'", "form-action 'self'",
 ].join('; ');
 let html = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
 const head = `<meta charset="utf-8">

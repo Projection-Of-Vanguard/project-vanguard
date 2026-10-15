@@ -2,7 +2,7 @@
 // Starts the local data server in-process on 127.0.0.1, opens a frameless window with native
 // Windows caption buttons, lives in the system tray, and keeps the renderer locked down:
 // context isolation + sandbox, no Node in the page, every permission denied, navigation pinned
-// to the local origin, external links handed to the default browser, and the Anthropic API key
+// to the local origin, external links handed to the default browser, and the AI provider key
 // encrypted with the Windows account (safeStorage).
 
 const { app, BrowserWindow, Tray, Menu, shell, ipcMain, safeStorage, session, nativeImage, dialog, Notification } = require('electron');
@@ -178,6 +178,12 @@ ipcMain.handle('app:set-setting', (event, key, value) => {
   return true;
 });
 ipcMain.handle('app:open-data', (event) => { if (fromApp(event)) shell.openPath(DATA_DIR); });
+// Open in Steam: the Steam app's store page for that game when Steam is installed, otherwise the store website
+ipcMain.on('app:open-steam', (event, appid) => {
+  if (!fromApp(event) || !Number.isInteger(appid) || appid <= 0 || appid > 99999999) return;
+  const steam = app.getApplicationNameForProtocol('steam://');
+  shell.openExternal(steam ? `steam://store/${appid}` : `https://store.steampowered.com/app/${appid}/`).catch(() => {});
+});
 // Windows notifications for price alerts. The page has no notification permission (every
 // permission request is denied), so it asks here; clicking the notification opens the game.
 const shown = new Set(); // keep references so click handlers survive garbage collection

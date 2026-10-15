@@ -1,8 +1,9 @@
-// AI search: Claude turns a natural-language request into filters (server side, see /api/ai-search);
+// AI search: the connected AI (any provider, see llm.js) turns a natural-language request into filters;
 // this module applies them to the catalog and ranks the results. Without an API key an offline
 // parser understands the common patterns (price, tags, "like X", platforms, release window).
 
-import { db, norm, searchGames, tagName, tagId, post } from './data.js';
+import { db, norm, searchGames, tagName, tagId, post, getSession } from './data.js';
+import { askJSON, sanitizeIntent, cleanAdvice, SEARCH_SYSTEM, PRICE_SYSTEM, PROVIDERS } from './llm.js';
 import { similarity } from './recs.js';
 
 const SYNONYMS = {
@@ -67,14 +68,57 @@ function offlineIntent(q) {
   return intent;
 }
 
-/** Ask Claude (via the local server); fall back to the offline parser when AI is unavailable. */
+/* Where the AI key lives: the desktop app's local server keeps it encrypted ("server"); the website
+   and phone app keep it on this device and call the provider directly ("device"). */
+const AI_STORE = 'st-ai';
+export const deviceAI = {
+  get() { try { const c = JSON.parse(localStorage.getItem(AI_STORE) || 'null'); return c?.provider ? c : null; } catch { return null; } },
+  set(c) { localStorage.setItem(AI_STORE, JSON.stringify(c)); },
+  clear() { try { localStorage.removeItem(AI_STORE); } catch { /* storage off */ } },
+};
+export async function aiWhere() {
+  const s = await getSession();
+  return s.config.publicSite ? 'device' : 'server';
+}
+const noAI = () => Object.assign(new Error('AI is not set up. Add an API key from any AI provider in Settings > AI.'), { status: 409 });
+const label = (c) => `${PROVIDERS[c.provider]?.label.replace(/ \(.*\)$/, '') || 'AI'} · ${c.model}`;
+
+/** Ask the connected AI; fall back to the offline parser when AI is unavailable. */
 export async function interpret(q) {
   try {
-    const { intent, model } = await post('/api/ai-search', { q });
-    return { intent, source: model || 'claude', online: true };
+    if (await aiWhere() === 'server') {
+      const { intent, model } = await post('/api/ai-search', { q });
+      return { intent, source: model || 'AI', online: true };
+    }
+    const cfg = deviceAI.get();
+    if (!cfg) throw noAI();
+    const vocab = new Map([...db.tags].map(([id, n]) => [n.toLowerCase(), id]));
+    const raw = await askJSON(cfg, { system: SEARCH_SYSTEM + [...db.tags.values()].sort().join(', '), user: q, maxTokens: 1500 });
+    return { intent: sanitizeIntent(raw, vocab), source: label(cfg), online: true };
   } catch (e) {
     return { intent: offlineIntent(q), source: 'offline', online: false, reason: e.message, status: e.status };
   }
+}
+
+/** Is an AI connected on this device or desktop app? */
+export async function aiConnected() {
+  if (await aiWhere() === 'server') return !!(await getSession()).config.aiConfigured;
+  return !!deviceAI.get();
+}
+
+/** Buying advice from the connected AI, given live store prices (see /api/stores). */
+export async function priceAdvice(g, other) {
+  if (await aiWhere() === 'server') return post('/api/ai-prices', { id: g.id });
+  const cfg = deviceAI.get();
+  if (!cfg) throw noAI();
+  const usd = (c) => (c == null ? null : +(c / 100).toFixed(2));
+  const facts = {
+    game: g.name, free_to_play: !!g.free, steam_price_usd: usd(g.price), steam_regular_price_usd: usd(g.orig), steam_discount_percent: g.disc || 0,
+    lowest_price_ever_usd: usd(other.lowest?.price), lowest_price_ever_date: other.lowest?.date ? new Date(other.lowest.date * 1000).toISOString().slice(0, 10) : null,
+    stores_now: other.deals.map((x) => ({ store: x.store, price_usd: usd(x.price), regular_usd: usd(x.retail), discount_percent: x.cut })),
+  };
+  const raw = await askJSON(cfg, { system: PRICE_SYSTEM, user: JSON.stringify(facts), maxTokens: 1500 });
+  return { advice: cleanAdvice(raw, other.deals.map((x) => x.store)), model: cfg.model };
 }
 
 /** Apply an intent to the catalog. Returns ranked games with a short "why". */

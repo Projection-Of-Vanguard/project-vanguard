@@ -169,6 +169,21 @@ export const justAdded = () => {
   return db.games.filter((g) => g.firstSeen > oldest).sort((a, b) => b.firstSeen - a.firstSeen || (a.ts || 9999) - (b.ts || 9999));
 };
 export const byTag = (tagid) => db.games.filter((g) => g.tags.includes(tagid)).sort((a, b) => (a.ts || 9999) - (b.ts || 9999));
+const INDIE = 492; // Steam's "Indie" tag
+const SOFTWARE = new Set([87, 1036, 84, 8013, 13906, 872, 784, 1027, 1445, 809, 5407]); // utilities, benchmarks, creative tools...
+const indie = () => db.games.filter((g) => g.tags.includes(INDIE) && released(g) && !g.tags.some((t) => SOFTWARE.has(t)));
+/** Indie games with the most players right now (24-hour peak). */
+export const indiePopular = () => indie().sort(by((g) => g.peak || g.players || 0));
+/**
+ * Indie games gaining players: daily peaks of the last 3 days against the week before (from 8 days
+ * of catalog history). Until there is enough history, new indie releases that are taking off.
+ */
+export const indieRising = () => {
+  const growing = indie().filter((g) => g.growth >= 15 && (g.peak || 0) >= 150).sort(by((g) => g.growth));
+  const fresh = indie().filter((g) => !growing.includes(g) && g.release > Date.now() - 120 * 864e5 && (g.peak || 0) >= 150)
+    .sort(by((g) => (g.peak || 0) / Math.max(1, (Date.now() - g.release) / 864e5)));
+  return [...growing, ...fresh];
+};
 export const newReleases = () => db.games.filter((g) => released(g) && g.release && g.release <= Date.now()).sort((a, b) => b.release - a.release);
 
 /** Discovery queue: a personal mix of games the viewer has not looked at. */

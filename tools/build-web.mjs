@@ -3,6 +3,7 @@
 //   web/server.mjs                        web/vercel.json     routes, security headers, daily cron
 // Only these files are deployed: no data/, no keys, no tools, no installers.
 import fs from 'node:fs';
+import { AI_HOSTS } from '../js/llm.js';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -40,12 +41,12 @@ fs.writeFileSync(path.join(WEB, 'package.json'), JSON.stringify({
   private: true,
   type: 'module',
   engines: { node: '24.x' },
-  dependencies: { '@anthropic-ai/sdk': ver('@anthropic-ai/sdk'), '@vercel/blob': ver('@vercel/blob') },
+  dependencies: { '@vercel/blob': ver('@vercel/blob') },
 }, null, 2) + '\n');
 
 const CSP = [
   "default-src 'self'", "script-src 'self'", "style-src 'self' 'unsafe-inline'", "img-src 'self' data: https:", "font-src 'self'",
-  "connect-src 'self'", "media-src 'self' https:", 'frame-src https://www.youtube-nocookie.com', "object-src 'none'", "base-uri 'none'",
+  `connect-src 'self' ${AI_HOSTS.join(' ')}`, "media-src 'self' https:", 'frame-src https://www.youtube-nocookie.com https://bandcamp.com', "object-src 'none'", "base-uri 'none'",
   "form-action 'self'", "frame-ancestors 'none'", 'upgrade-insecure-requests',
 ].join('; ');
 fs.writeFileSync(path.join(WEB, 'vercel.json'), JSON.stringify({

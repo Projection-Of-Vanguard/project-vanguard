@@ -2,7 +2,7 @@
 
 import { db, gameTags, searchGames } from '../data.js';
 import { state, toggleCompare, onChange } from '../state.js';
-import { $, esc, icon, num, priceHTML, revHTML, platformsHTML, deckHTML, releaseText, cartBtn, setAmbient } from '../ui.js';
+import { $, esc, icon, num, priceHTML, revHTML, platformsHTML, deckHTML, releaseText, steamBtn, setAmbient } from '../ui.js';
 
 const ROWS = [
   ['Price', (g) => priceHTML(g)],
@@ -30,7 +30,7 @@ export function viewCompare() {
       <thead><tr><th scope="col"><span class="sr-only">Detail</span></th>${games.map((g) => `<th scope="col"><a href="#/app/${g.id}" class="compare__game"><img src="${g.header}" alt="" width="460" height="215"><span>${esc(g.name)}</span></a>
         <button type="button" class="iconbtn" data-cmp-remove="${g.id}" aria-label="Remove ${esc(g.name)} from the comparison">${icon('x')}</button></th>`).join('')}</tr></thead>
       <tbody>${ROWS.map(([label, fn]) => `<tr><th scope="row">${label}</th>${games.map((g) => `<td>${fn(g)}</td>`).join('')}</tr>`).join('')}
-        <tr><th scope="row"><span class="sr-only">Buy</span></th>${games.map((g) => `<td>${cartBtn(g, 'btn btn--primary btn--sm')}</td>`).join('')}</tr></tbody>
+        <tr><th scope="row"><span class="sr-only">Buy</span></th>${games.map((g) => `<td>${steamBtn(g, 'btn btn--primary btn--sm')}</td>`).join('')}</tr></tbody>
     </table></div>` : '<div class="empty reveal" style="--i:2"><h2>Nothing to compare yet</h2><p>Open any game and press Compare, or add one with the search above.</p><a class="btn btn--primary" href="#/browse/top">Browse top sellers</a></div>'}
   </div>`;
 }

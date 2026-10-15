@@ -1,8 +1,9 @@
 import { db, loadCatalog, searchGames, searchTags, pick, norm, post, applyContentFilter } from './data.js';
-import { state, onChange, prune, inCart, addToCart, removeFromCart, toggleWish } from './state.js';
-import { $, $$, esc, icon, money, priceHTML, toast, useVT, reduceMotion, ago, skel, nameHTML } from './ui.js';
+import { state, onChange, prune, toggleWish } from './state.js';
+import { $, $$, esc, icon, priceHTML, toast, useVT, ago, skel, nameHTML } from './ui.js';
 import { vt, clearNames, markSource } from './transition.js';
 import { initPriceAlerts, checkPriceAlerts } from './alerts.js';
+import { initMusic } from './music.js';
 import { viewHome, mountHome } from './views/home.js';
 import { viewDetail, mountDetail } from './views/detail.js';
 import { viewBrowse, mountBrowse, browseTitle } from './views/browse.js';
@@ -100,16 +101,25 @@ const sameArea = (r) => lastRoute && lastRoute.name === r.name && lastRoute.id =
 function navigate() {
   if (location.hash && !location.hash.startsWith('#/')) return; // in-page anchors such as the skip link
   if (useVT()) {
-    const t = document.startViewTransition(render);
-    t.finished.finally(() => { clearNames(); vt.pending = false; });
+    // The browser only starts the transition on its next painted frame; a window that isn't
+    // painting (throttled, covered) would leave the old page up, so render anyway after a moment
+    let done = false;
+    const run = () => { if (!done) { done = true; render(); } };
+    const t = document.startViewTransition(run);
+    const late = setTimeout(() => { if (!done) { t.skipTransition(); run(); } }, 800);
+    t.ready.catch(() => {}); // a skipped transition rejects these; the page is already rendered
+    t.updateCallbackDone.catch(() => {});
+    t.finished.catch(() => {}).finally(() => { clearTimeout(late); clearNames(); vt.pending = false; });
   } else { render(); clearNames(); vt.pending = false; }
 }
 window.addEventListener('hashchange', navigate);
+// Phone app: the home server answered after a slow start; new pages now load from it
+window.addEventListener('homeserver', () => toast('Connected to your home server. Pages now load from it'));
 
-/* ---------------------------------------------------- cart and wishlist */
+/* ---------------------------------------------------- wishlist and Steam */
 
 function updateCounts(bump) {
-  [['cart', state.cart.length, 'Cart'], ['wish', state.wish.size, 'Wishlist']].forEach(([k, n, label]) => {
+  [['wish', state.wish.size, 'Wishlist']].forEach(([k, n, label]) => {
     $$(`[data-count="${k}"]`).forEach((c) => {
       c.textContent = n; c.classList.toggle('is-on', n > 0);
       c.closest('button, a')?.setAttribute('aria-label', `${label}, ${n} ${n === 1 ? 'item' : 'items'}`);
@@ -119,11 +129,6 @@ function updateCounts(bump) {
 }
 
 onChange((what, id) => {
-  if (what === 'cart') {
-    $$(`[data-cart="${id}"]`).forEach((b) => { const on = inCart(id); b.classList.toggle('is-added', on); b.innerHTML = on ? `${icon('check', 'i i--sm')}In cart` : 'Add to cart'; });
-    updateCounts(inCart(id) ? 'cart' : null);
-    renderCart();
-  }
   if (what === 'wish') {
     const on = state.wish.has(id);
     const g = db.byId.get(id);
@@ -136,58 +141,14 @@ onChange((what, id) => {
   }
 });
 
-const drawer = $('#cart');
-const scrim = $('.scrim');
-let lastFocus = null;
-
-function renderCart() {
-  const list = $('[data-slot="cart-list"]');
-  const foot = $('[data-slot="cart-foot"]');
-  const items = pick(state.cart);
-  if (!items.length) {
-    list.innerHTML = '<div class="drawer__empty"><h3>Your cart is empty</h3><p>Add a game and it will wait for you here.</p><button type="button" class="btn btn--primary" data-cart-browse>Browse specials</button></div>';
-    foot.innerHTML = '';
-    return;
-  }
-  const total = items.reduce((s, g) => s + (g.price || 0), 0);
-  const saved = items.reduce((s, g) => s + ((g.orig || 0) - (g.price || 0)), 0);
-  list.innerHTML = items.map((g) => `<div class="cart-item" data-item="${g.id}"><img src="${g.header}" alt="" width="460" height="215"><div><a class="cart-item__name" href="#/app/${g.id}">${esc(g.name)}</a><div class="cart-item__price">${g.disc ? `<s>${money(g.orig)}</s> ` : ''}${money(g.price || 0)}</div></div><button class="iconbtn" type="button" data-remove="${g.id}" aria-label="Remove ${esc(g.name)} from cart">${icon('trash')}</button></div>`).join('');
-  foot.innerHTML = `<div class="drawer__total"><span>Estimated total</span><strong>${money(total)}</strong></div>
-    ${saved > 0 ? `<p class="drawer__save">You save ${money(saved)} with current discounts</p>` : ''}
-    <button type="button" class="btn btn--primary" data-checkout>Continue to payment</button>`;
-}
-function trap(e) {
-  if (e.key === 'Escape') { closeCart(); return; }
-  if (e.key !== 'Tab') return;
-  const f = $$('button, a[href], input', drawer).filter((x) => !x.disabled && x.offsetParent);
-  if (!f.length) return;
-  if (e.shiftKey && document.activeElement === f[0]) { f[f.length - 1].focus(); e.preventDefault(); }
-  else if (!e.shiftKey && document.activeElement === f[f.length - 1]) { f[0].focus(); e.preventDefault(); }
-}
-function openCart() {
-  lastFocus = document.activeElement;
-  renderCart();
-  drawer.classList.add('is-open'); scrim.classList.add('is-open');
-  drawer.setAttribute('aria-hidden', 'false'); drawer.inert = false;
-  document.addEventListener('keydown', trap);
-  setTimeout(() => $('[data-action="close-cart"]', drawer).focus({ preventScroll: true }), 60);
-}
-function closeCart() {
-  if (!drawer.classList.contains('is-open')) return;
-  drawer.classList.remove('is-open'); scrim.classList.remove('is-open');
-  drawer.setAttribute('aria-hidden', 'true'); drawer.inert = true;
-  document.removeEventListener('keydown', trap);
-  lastFocus?.focus?.({ preventScroll: true });
-}
-
 document.addEventListener('click', (e) => {
   const t = e.target;
-  const c = t.closest('[data-cart]');
-  if (c) {
-    e.preventDefault();
-    const id = +c.dataset.cart;
-    if (inCart(id)) openCart();
-    else { addToCart(id); toast(`Added ${db.byId.get(id).name} to your cart`, { label: 'View cart', fn: openCart }); }
+  // Open in Steam: the desktop app opens the Steam app itself (or the store website without it);
+  // the website and the phone app follow the link to the Steam store page
+  const st = t.closest('[data-steam]');
+  if (st) {
+    if (window.desktop?.openSteam) { e.preventDefault(); window.desktop.openSteam(+st.dataset.steam); }
+    toast(`Opening ${db.byId.get(+st.dataset.steam)?.name || 'the game'} on Steam`);
     return;
   }
   const w = t.closest('[data-wish]');
@@ -199,24 +160,9 @@ document.addEventListener('click', (e) => {
     toast(on ? `Added ${g.name} to your wishlist` : `Removed ${g.name} from your wishlist`, on ? { label: 'View wishlist', fn: () => { location.hash = '#/browse/wishlist'; } } : null);
     return;
   }
-  const p = t.closest('[data-play]');
-  if (p) { toast(`Install Steam to start playing ${db.byId.get(+p.dataset.play).name}`); return; }
-  const rm = t.closest('[data-remove]');
-  if (rm) {
-    const row = rm.closest('.cart-item');
-    const id = +rm.dataset.remove;
-    if (reduceMotion.matches) removeFromCart(id);
-    else { row.classList.add('is-removing'); row.addEventListener('animationend', () => removeFromCart(id), { once: true }); }
-    return;
-  }
-  if (t.closest('[data-checkout]')) { toast('Checkout is turned off in this concept'); return; }
-  if (t.closest('[data-cart-browse]')) { closeCart(); location.hash = '#/browse/specials'; return; }
-  if (t.closest('.cart-item__name')) { closeCart(); return; }
   const act = t.closest('[data-action]');
   if (act) {
     const a = act.dataset.action;
-    if (a === 'cart') openCart();
-    if (a === 'close-cart') closeCart();
     if (a === 'wishlist') location.hash = '#/browse/wishlist';
     if (a === 'menu') openSheet();
     if (a === 'close-sheet') closeSheet();
@@ -441,12 +387,11 @@ if (window.mobileApp) {
     location.href = a.href;
   });
 
-  // Android's Back button closes whatever is open first (dialogs, cart, menu, search),
+  // Android's Back button closes whatever is open first (dialogs, menu, search),
   // then goes back through the app's pages, and only leaves the app from the first page
   const closeTopOverlay = () => {
     const dialog = [...document.querySelectorAll('dialog[open]')].pop();
     if (dialog) { if (dialog.dispatchEvent(new Event('cancel', { cancelable: true }))) dialog.close(); return true; }
-    if (drawer.getAttribute('aria-hidden') === 'false') { closeCart(); return true; }
     if (sheet.classList.contains('is-open')) { closeSheet(); return true; }
     if (!sList.hidden) { closeSearch(); sInput.blur(); return true; }
     if ($('.menu__panel.is-open')) { closeMenus(); return true; }
@@ -537,8 +482,6 @@ async function boot() {
     .map(([id, n], i) => `<a href="#/tag/${id}"><span class="swatch" style="--h:${(i * 47) % 360}"></span>${esc(n)}</a>`).join('');
   updateFooter();
   updateCounts();
-  renderCart();
-  drawer.inert = true;
   sheet.inert = true;
   // Website vs desktop app: show only the controls that work here
   if (window.desktop || window.mobileApp) $$('[data-web-only]').forEach((el) => el.remove());
@@ -547,9 +490,13 @@ async function boot() {
     document.documentElement.dataset.site = 'public';
     $$('[data-action="update"]').forEach((el) => el.remove());
   }).catch(() => {});
+  // Settings > Store > Start page (only when the app opens on the home page)
+  const start = { specials: '#/browse/specials', mostplayed: '#/browse/mostplayed', foryou: '#/browse/foryou', wishlist: '#/browse/wishlist', indie: '#/browse/indie', community: '#/community' }[window.STPrefs?.get().startPage];
+  if (start && (!location.hash || location.hash === '#/')) history.replaceState(null, '', start);
   render();
   saleAlerts();
   initPriceAlerts();
+  initMusic();
   initComments();
   initCompareTray();
   fetch('/api/status', { cache: 'no-store' }).then((r) => r.json()).then((st) => { if (st.building && !updating) { updating = true; waitForBuild(new Set(db.all.map((g) => g.id))); } }).catch(() => {});

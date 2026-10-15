@@ -2,9 +2,23 @@ import { db, tagId, tagName, gameTags, api } from '../data.js';
 import * as R from '../recs.js';
 import { state, clearViewed } from '../state.js';
 import {
-  $, $$, esc, icon, priceHTML, revHTML, cartBtn, wishBtn, capHTML, rowHTML, sectionHead, scrollBtns, shelf, platformsHTML, nameHTML,
-  mountScrollers, setAmbient, reduceMotion, timeLeft, compactNum, skel,
+  $, $$, esc, icon, priceHTML, revHTML, steamBtn, wishBtn, capHTML, rowHTML, sectionHead, scrollBtns, shelf, platformsHTML, nameHTML,
+  mountScrollers, setAmbient, reduceMotion, timeLeft, compactNum, skel, steamUrl,
 } from '../ui.js';
+
+/** A demo card: demos are their own Steam apps, so the card opens the full game here when it's in the catalog. */
+function demoCard(d) {
+  const parent = d.parent && db.byId.get(d.parent);
+  const name = d.name.replace(/\s*[-–—:(]?\s*(free )?(demo|free sample|prologue)\)?\s*$/i, '') || d.name;
+  const live = window.STPrefs?.get().players !== false && d.players ? `<span class="live cap__players" title="Playing the demo now">${compactNum(d.players)}<span class="sr-only"> playing now</span></span>` : '';
+  return `<article class="cap demo">
+    <a class="cap__link" href="${parent ? `#/app/${parent.id}` : steamUrl(d.id)}"${parent ? '' : ' target="_blank" rel="noopener"'}>
+      <div class="cap__media"><img src="${d.capsule}" data-fb="${d.header}" alt="" loading="lazy" decoding="async" width="616" height="353"><span class="demo__badge">Free demo</span>${live}</div>
+      <div class="cap__info"><div class="gname cap__name"><span class="gname__text">${esc(name)}</span></div><div class="cap__sub">${parent ? 'See the full game' : 'Full game not in this catalog yet'}</div></div>
+    </a>
+    <a class="demo__get" href="${steamUrl(d.id)}" target="_blank" rel="noopener" data-steam="${d.id}" aria-label="Get the ${esc(name)} demo on Steam">${icon('download', 'i i--sm')}Get demo</a>
+  </article>`;
+}
 
 const FEST_END = Date.parse('2026-10-19T17:00:00Z');
 const CATEGORY_TAGS = [
@@ -28,7 +42,7 @@ function slideHTML(g, i, n) {
       <div class="slide__titlerow"><h3 class="slide__title">${esc(g.name)}</h3>${platformsHTML(g)}</div>
       <p class="slide__desc">${esc(g.short)}</p>
       <div class="slide__meta">${revHTML(g)}${gameTags(g, 3).map((t) => `<span class="chip">${esc(t)}</span>`).join('')}</div>
-      <div class="slide__buy">${priceHTML(g, true)}${cartBtn(g)}${wishBtn(g)}<a class="btn btn--ghost" href="#/app/${g.id}">View game</a></div>
+      <div class="slide__buy">${priceHTML(g, true)}${steamBtn(g)}${wishBtn(g)}<a class="btn btn--ghost" href="#/app/${g.id}">View game</a></div>
     </div>
     <div class="slide__shots" data-shots="${g.id}"></div>
   </article>`;
@@ -75,7 +89,7 @@ export function viewHome() {
   </section>
 
   ${personal
-    ? shelf('foryou', 'Recommended for you', R.forYou(18), { sub: 'Picked from the games you viewed, wishlisted and added to your cart', more: '#/browse/foryou' })
+    ? shelf('foryou', 'Recommended for you', R.forYou(18), { sub: 'Picked from the games you viewed and wishlisted', more: '#/browse/foryou' })
       + (because?.items.length ? shelf('because', `Because you looked at <a class="inline-link" href="#/app/${because.anchor.id}">${esc(because.anchor.name)}</a>`, because.items, { sub: 'Similar tags, similar feel' }) : '')
     : shelf('trending', 'Trending this week', R.trending().slice(0, 18), { sub: 'Games climbing the charts right now. Open a few and this space learns your taste.', more: '#/browse/trending' })}
 
@@ -119,10 +133,18 @@ export function viewHome() {
     </div>
   </section>
 
+  ${db.demos.length ? `<section class="section wrap caps" aria-labelledby="h-demos" data-scroller>
+    ${sectionHead('demos', 'Popular demos', 'Free to try, ranked by how many people are playing each demo right now', `<a class="link-more" href="https://store.steampowered.com/demos/" target="_blank" rel="noopener">More on Steam</a>${scrollBtns('popular demos')}`)}
+    <div class="scroller"><div class="scroller__track">${db.demos.slice(0, 20).map(demoCard).join('')}</div><div class="dots" aria-hidden="true"></div></div>
+  </section>` : ''}
+
   <section class="section wrap caps" aria-labelledby="h-disc" data-scroller data-seg-shelf="disc">
     ${sectionHead('disc', 'Big discounts', 'Ranked by discount and player reviews', `<div class="seg" role="group" aria-label="Minimum discount"><span class="seg__pill"></span>${[50, 75, 90].map((v, k) => `<button type="button" data-v="${v}" aria-pressed="${k === 0}">${v}%+</button>`).join('')}</div>${scrollBtns('big discounts')}`)}
     <div class="scroller"><div class="scroller__track" data-seg-track></div><div class="dots" aria-hidden="true"></div></div>
   </section>
+
+  ${shelf('indie', 'Popular indie games', R.indiePopular().slice(0, 18), { sub: 'Independent games with the most players right now', more: '#/browse/indie' })}
+  ${shelf('indie-rising', 'Rising indie games', R.indieRising().slice(0, 18), { sub: 'Indie games gaining players day by day, and new ones taking off', more: '#/browse/indie-rising' })}
 
   <section class="section wrap cats" aria-labelledby="h-cats" data-scroller>
     ${sectionHead('cats', 'Browse by category', '', scrollBtns('categories'))}

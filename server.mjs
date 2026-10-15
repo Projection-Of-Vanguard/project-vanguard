@@ -9,7 +9,7 @@
 // Security: binds to 127.0.0.1 only, rejects foreign Host headers (DNS rebinding),
 // requires same-origin + CSRF token on every write, rate-limits each endpoint group,
 // validates all parameters, sends a strict Content-Security-Policy, and never sends the
-// Anthropic API key back to the browser.
+// AI provider key back to the browser.
 
 import http from 'node:http';
 import fs from 'node:fs/promises';
@@ -34,9 +34,7 @@ const HOME = process.env.HOME_MODE === '1';
 const SHARED = PUBLIC || HOME;
 const APP_ORIGIN = 'https://app.projectvanguard';
 
-const DEFAULT_CONFIG = { catalogMax: 10000, minPlayers: 100, refreshHours: 6, aiEnabled: true, aiModel: 'claude-opus-5-5' };
-const AI_MODELS = ['claude-opus-5-5', 'claude-sonnet-5-5', 'claude-haiku-5-5'];
-const FALLBACK_MODELS = new Set(['claude-opus-5-5', 'claude-sonnet-5-5']); // server-side refusal fallback ("default" form)
+const DEFAULT_CONFIG = { catalogMax: 10000, minPlayers: 100, refreshHours: 6, aiEnabled: true };
 
 /* ------------------------------------------------------------------ fetch */
 
@@ -46,12 +44,12 @@ const MAX_CONCURRENT = 16;
 const slot = () => new Promise((r) => (active < MAX_CONCURRENT ? (active++, r()) : waiting.push(r)));
 const release = () => { const n = waiting.shift(); if (n) n(); else active--; };
 
-async function get(url, { json = true, timeout = 20000, retries = 2 } = {}) {
+async function get(url, { json = true, timeout = 20000, retries = 2, headers = UA } = {}) {
   await slot();
   try {
     for (let i = 0; ; i++) {
       try {
-        const res = await fetch(url, { headers: UA, signal: AbortSignal.timeout(timeout), redirect: 'follow' });
+        const res = await fetch(url, { headers, signal: AbortSignal.timeout(timeout), redirect: 'follow' });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         return json ? await res.json() : await res.text();
       } catch (e) {
@@ -129,13 +127,12 @@ function fileSecrets() {
     set(v) { writeFileSync(SECRETS_FILE, JSON.stringify({ anthropicKey: v || null }), { mode: 0o600 }); },
   };
 }
-const apiKey = () => process.env.ANTHROPIC_API_KEY || secrets.get();
 
 /* ---------------------------------------------------------------- catalog */
 
 const DATA_REQUEST = {
   include_assets: true, include_basic_info: true, include_tag_count: 12, include_reviews: true,
-  include_release: true, include_platforms: true, include_all_purchase_options: true,
+  include_release: true, include_platforms: true, include_all_purchase_options: true, include_related_items: true,
 };
 
 async function rankedIds(sort, total, extraFilters = {}) {
@@ -176,6 +173,8 @@ async function currentPlayers(id) {
 }
 
 const strip = (s) => String(s || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+// Shorten at a word boundary with an ellipsis, so lists never show a word cut in half
+const clip = (s, n) => (s.length <= n ? s : `${s.slice(0, n + 1).replace(/\s+\S*$/, '').replace(/[,;:.\s-]+$/, '')}…`);
 const assetKey = (f) => f || 0; // relative filename, e.g. '<hash>/header_alt_assets_5.jpg'
 
 function compact(it) {
@@ -208,7 +207,7 @@ function compact(it) {
     ad: cd.includes(3) || cd.includes(4) ? 1 : 0,
     dev: (it.basic_info?.developers || []).map((x) => x.name).slice(0, 2),
     pub: (it.basic_info?.publishers || []).map((x) => x.name).slice(0, 2),
-    s: strip(it.basic_info?.short_description).slice(0, 180),
+    s: clip(strip(it.basic_info?.short_description), 180),
     h: assetKey(a.header),
     c: assetKey(a.main_capsule),
     hr: assetKey(a.library_hero),
@@ -308,6 +307,12 @@ async function buildCatalog() {
         if (lastDay && lastDay[0] === day) lastDay[1] = Math.max(lastDay[1], g.pc);
         else dp.push([day, g.pc]);
         if (dp.length > 30) dp.splice(0, dp.length - 30);
+        // Growth for "rising" lists: the last 3 days' peaks against the week before
+        if (dp.length >= 8) {
+          const avg = (a) => a.reduce((n, x) => n + x[1], 0) / a.length;
+          const before = avg(dp.slice(-10, -3));
+          if (before >= 20) g.gr = Math.round((avg(dp.slice(-3)) / before - 1) * 100);
+        }
       }
       const low = ph.reduce((m, p) => (p[1] != null && (m == null || p[1] < m) ? p[1] : m), null);
       if (low != null && g.p != null && low < g.p) g.lo = low;
@@ -330,8 +335,12 @@ async function buildCatalog() {
       tags = Object.fromEntries(all.filter((t) => used.has(t.tagid)).map((t) => [t.tagid, t.name]));
     } catch (e) { log(`catalog: tag names failed: ${e.message}`); }
 
+    let demos = catalog?.demos || [];
+    buildProgress = 'Finding popular demos';
+    try { demos = await popularDemos(); } catch (e) { log(`catalog: demos failed: ${e.message}`); }
+
     const previous = catalog?.games;
-    catalog = { v: 3, updated: now, count: games.length, minPlayers, tags, games, changes: { added, removed: history.removed.slice(0, 40) } };
+    catalog = { v: 3, updated: now, count: games.length, minPlayers, tags, games, demos, changes: { added, removed: history.removed.slice(0, 40) } };
     recordEvents(previous, games);
     await writeStore('catalog.json', catalog);
     await writeStore('history.json', history);
@@ -342,6 +351,32 @@ async function buildCatalog() {
     if (HOME) setTimeout(warmCache, 5000);
   })().catch((e) => { lastError = e.message; log(`catalog: build failed: ${e.message}`); }).finally(() => { building = null; buildProgress = ''; buildPct = 0; });
   return building;
+}
+
+/* ----------------------------------------------------------------- demos */
+// Steam's demo listing has no popularity order, so take the newest and the most relevant demos and
+// rank them by how many people are playing each one right now.
+async function popularDemos() {
+  const ids = new Set();
+  for (const [start, sort] of [[0, 'Released_DESC'], [100, 'Released_DESC'], [200, 'Released_DESC'], [0, ''], [100, '']]) {
+    try {
+      const d = await get(`https://store.steampowered.com/search/results/?query=&start=${start}&count=100&category1=10&infinite=1&cc=us&l=english${sort ? `&sort_by=${sort}` : ''}`, { retries: 1 });
+      for (const m of String(d?.results_html || '').matchAll(/data-ds-appid="(\d{1,8})"/g)) ids.add(+m[1]);
+    } catch { /* one page missing is fine */ }
+  }
+  if (ids.size < 20) throw new Error(`only ${ids.size} demos listed`);
+  const counts = new Map();
+  await pool([...ids], 16, async (id) => { try { counts.set(id, await currentPlayers(id)); } catch { /* skip */ } });
+  const top = [...counts].filter(([, n]) => n >= 3).sort((a, b) => b[1] - a[1]).slice(0, 60).map(([id]) => id);
+  const items = await storeItems(top);
+  // Software demos (utilities, benchmarks, audio and video tools...) aren't games
+  const SOFTWARE = new Set([87, 1036, 84, 8013, 13906, 872, 784, 1027, 1445, 809, 5407]);
+  return top.map((id) => {
+    const it = items.get(id);
+    if (!it || (it.tagids || []).some((t) => SOFTWARE.has(t))) return null;
+    const a = it.assets || {};
+    return { id, n: it.name, pc: counts.get(id), h: assetKey(a.header), c: assetKey(a.main_capsule), parent: it.related_items?.parent_appid || null, tg: (it.tagids || []).slice(0, 8) };
+  }).filter(Boolean).slice(0, 40);
 }
 
 /* -------------------------------------------------- deal feed (home server) */
@@ -374,7 +409,7 @@ const IMG_HOSTS = ['shared.akamai.steamstatic.com', 'shared.fastly.steamstatic.c
   'cdn.fastly.steamstatic.com', 'cdn.cloudflare.steamstatic.com', 'store.akamai.steamstatic.com', 'store.fastly.steamstatic.com',
   'clan.akamai.steamstatic.com', 'clan.fastly.steamstatic.com', 'avatars.akamai.steamstatic.com', 'avatars.fastly.steamstatic.com',
   'avatars.steamstatic.com', 'community.akamai.steamstatic.com', 'community.fastly.steamstatic.com', 'steamcdn-a.akamaihd.net',
-  'steamcommunity-a.akamaihd.net', 'steamuserimages-a.akamaihd.net', 'images.steamusercontent.com'];
+  'steamcommunity-a.akamaihd.net', 'steamuserimages-a.akamaihd.net', 'images.steamusercontent.com', 'img.youtube.com', 'i.ytimg.com'];
 const IMG_HOST_SET = new Set(IMG_HOSTS);
 const IMG_RE = new RegExp(`https://(${IMG_HOSTS.map((h) => h.replace(/\./g, '\\.')).join('|')})/`, 'g');
 const IMG_MAX_BYTES = 15 * 1048576;
@@ -452,6 +487,24 @@ async function warmCache() {
   } finally { warming = false; }
 }
 
+// Home server: which phones use it and how much, shown in its window and on its status page
+const phones = new Map(); // address -> last request time
+const served = { requests: 0, photos: 0 };
+function notePhone(ip, photo) {
+  ip = String(ip).replace(/^::ffff:/, '');
+  const now = Date.now();
+  const last = phones.get(ip);
+  if (!last || now - last > 30 * 60e3) log(`phone ${ip} connected`);
+  phones.set(ip, now);
+  served.requests++;
+  if (photo) served.photos++;
+}
+function phoneReport() {
+  const active = [...phones.values()].filter((t) => Date.now() - t < 3600e3).length;
+  if (served.requests) log(`last hour: ${served.requests} requests (${served.photos} photos) for ${active} phone${active === 1 ? '' : 's'}`);
+  served.requests = 0; served.photos = 0;
+}
+
 function sendHomeStatus(req, res) {
   const h = (v) => String(v).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
   const updated = catalog?.updated ? new Date(catalog.updated * 1000).toLocaleString() : 'not yet';
@@ -460,6 +513,7 @@ function sendHomeStatus(req, res) {
 <h1 style="font-size:24px">Project Vanguard home server is running</h1>
 <p>${(catalog?.games.length || 0).toLocaleString('en-US')} games, last refreshed ${h(updated)}${building ? ' (refreshing now)' : ''}. Refreshes every ${config.refreshHours} hour${config.refreshHours === 1 ? '' : 's'}.</p>
 <p>${events.length} deal notification${events.length === 1 ? '' : 's'} in the last 7 days.</p>
+<p>${[...phones.values()].filter((t) => Date.now() - t < 3600e3).length} phone(s) used it in the last hour, ${served.requests} requests so far this hour.</p>
 <p>In the Steam Redesigned app on your phone, open Settings &rsaquo; Catalog &amp; data &rsaquo; Home server and enter <b>http://${h(req.headers.host)}</b></p></body>`;
   res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store', 'Content-Security-Policy': "default-src 'none'; style-src 'unsafe-inline'" });
   res.end(html);
@@ -480,15 +534,34 @@ async function spyStep() {
       for (const r of rows) { const id = +r.appid; if (!id) continue; if ((r.ccu || 0) >= 20) spy.ids[id] = r.ccu; else delete spy.ids[id]; }
       spy.page++;
     }
+    spy.fails = 0;
     spy.updated = Math.floor(Date.now() / 1000);
     await fs.writeFile(SPY_FILE, JSON.stringify(spy));
-  } catch (e) { log(`steamspy: page ${spy.page} failed: ${e.message}`); }
+  } catch (e) {
+    // SteamSpy answers past its last page (and when busy) with plain text. Say so once, then
+    // start the next round instead of repeating the same error every minute.
+    spy.fails = (spy.fails || 0) + 1;
+    if (spy.fails === 1) log(`steamspy: page ${spy.page} not available right now (${String(e.message).slice(0, 60)}); trying again shortly`);
+    if (spy.fails >= 3) { spy.page = 0; spy.cycles++; spy.fails = 0; }
+  }
 }
 
 /* ------------------------------------------------------------ game details */
 
+// Steam's requirement lists as rows ({ k: 'Processor', v: 'Intel Core i3-8100 or Ryzen 5 1400' });
+// lines without a label ("Requires a 64-bit processor...") keep k empty
+const unescape = (s) => s.replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>');
+function reqRows(html) {
+  if (!html) return [];
+  const parts = /<li[\s>]/i.test(html) ? String(html).split(/<li[^>]*>/i).slice(1) : String(html).split(/<br\s*\/?>/i);
+  return parts.map((p) => unescape(strip(p.replace(/<br\s*\/?>/gi, ' '))))
+    .filter((t) => t && !/^(minimum|recommended)\s*:?$/i.test(t))
+    .map((t) => { const m = /^([A-Za-z][A-Za-z ./&-]{1,30}):\s*(.+)$/.exec(t.replace(/^(minimum|recommended)\s*:\s*/i, '')); return m ? { k: m[1].trim(), v: m[2].trim().slice(0, 300) } : { k: '', v: t.slice(0, 300) }; })
+    .slice(0, 14);
+}
+
 async function appDetails(id) {
-  return cached(`app-${id}`, 12 * 3600e3, async () => {
+  return cached(`app2-${id}`, 12 * 3600e3, async () => {
     const d = await get(`https://store.steampowered.com/api/appdetails?appids=${id}&cc=${CC.toLowerCase()}&l=${LANG}`);
     const a = d?.[id]?.data;
     if (!d?.[id]?.success || !a) throw Object.assign(new Error('not found'), { status: 404 });
@@ -511,6 +584,7 @@ async function appDetails(id) {
       metacritic: a.metacritic?.score || null,
       languages: strip(a.supported_languages || '').replace(/\*?languages with full audio support/i, '').split(',').map((s) => s.replace(/\*/g, '').trim()).filter(Boolean).slice(0, 14),
       requirements: req.replace(/^Minimum:\s*/i, '').slice(0, 600),
+      reqs: { min: reqRows(a.pc_requirements?.minimum), rec: reqRows(a.pc_requirements?.recommended) },
       dlc: (a.dlc || []).length,
       free: !!a.is_free,
     };
@@ -698,95 +772,89 @@ async function communityNews() {
 }
 
 /* --------------------------------------------------------------- AI search */
+// Any provider's API key works (Gemini, Groq, OpenAI, Claude, OpenRouter and more, see js/llm.js).
+// The desktop app keeps the key here, encrypted; the website and phone app keep it on the device
+// and call the provider themselves, so their keys never reach this server.
 
-const AI_SCHEMA = {
-  type: 'object',
-  additionalProperties: false,
-  required: ['summary', 'include_tags', 'exclude_tags', 'similar_to', 'title_keywords', 'max_price_usd', 'min_review_percent', 'free_only', 'on_sale_only', 'platform', 'release', 'sort'],
-  properties: {
-    summary: { type: 'string', description: 'One short sentence, in the language of the request, saying what you will search for.' },
-    include_tags: { type: 'array', items: { type: 'string' }, description: 'Tags from the vocabulary that results should have. Most important first.' },
-    exclude_tags: { type: 'array', items: { type: 'string' }, description: 'Tags from the vocabulary that results must not have.' },
-    similar_to: { type: 'array', items: { type: 'string' }, description: 'Names of specific games the user wants something like.' },
-    title_keywords: { type: 'array', items: { type: 'string' }, description: 'Words that must appear in the game name, only when the user names a franchise or title.' },
-    max_price_usd: { anyOf: [{ type: 'number' }, { type: 'null' }] },
-    min_review_percent: { anyOf: [{ type: 'integer' }, { type: 'null' }] },
-    free_only: { type: 'boolean' },
-    on_sale_only: { type: 'boolean' },
-    platform: { type: 'string', enum: ['any', 'mac', 'linux', 'steam_deck'] },
-    release: { type: 'string', enum: ['any', 'new', 'upcoming', 'older'] },
-    sort: { type: 'string', enum: ['relevance', 'popular', 'rating', 'price_low', 'price_high', 'newest', 'discount', 'players'] },
-  },
-};
+const llm = () => import('./js/llm.js');
 
-const AI_SYSTEM = `You turn a player's request for games into search filters for a Steam store catalog.
+/** The saved AI setup: { provider, key, model, base }, or null. Older versions saved a bare Anthropic key. */
+function aiSetup() {
+  if (process.env.ANTHROPIC_API_KEY) return { provider: 'anthropic', key: process.env.ANTHROPIC_API_KEY, model: 'claude-haiku-5-5', base: 'https://api.anthropic.com/v1', source: 'environment' };
+  if (SHARED) return null;
+  const raw = secrets.get();
+  if (!raw) return null;
+  if (/^sk-ant-/.test(raw)) return { provider: 'anthropic', key: raw, model: 'claude-haiku-5-5', base: 'https://api.anthropic.com/v1', source: 'saved' };
+  try { const c = JSON.parse(raw); return c?.provider ? { ...c, source: 'saved' } : null; } catch { return null; }
+}
 
-Return only the JSON described by the schema. Rules:
-- include_tags and exclude_tags must be copied exactly from the tag vocabulary below. Map synonyms and other languages to the closest tags (for example "farming" to "Farming Sim", "scary" to "Horror", "with friends" to "Co-op" or "Online Co-Op"). Use at most 6 include tags; put the defining ones first.
-- similar_to lists games the user names as a reference point ("like Hades", "similar to Stardew Valley").
-- title_keywords is only for when the user is looking for a specific title or franchise; otherwise leave it empty.
-- Prices are in US dollars. "cheap" means under 10, "free" sets free_only.
-- release: "new" for the last few months, "upcoming" for unreleased games, "older" for classics.
-- sort: pick what the request implies ("best", "highly rated" -> rating; "popular", "everyone plays" -> players; "deals" -> discount); otherwise relevance.
-- summary is one plain sentence in the same language as the request.
-
-Tag vocabulary:
-`;
-
-function sanitizeIntent(raw) {
-  const vocab = new Map(Object.entries(catalog?.tags || {}).map(([id, n]) => [n.toLowerCase(), +id]));
-  const strs = (a, n = 8) => (Array.isArray(a) ? a.filter((s) => typeof s === 'string').map((s) => s.trim().slice(0, 60)).filter(Boolean).slice(0, n) : []);
-  const tagIds = (a) => [...new Set(strs(a).map((s) => vocab.get(s.toLowerCase())).filter(Boolean))];
-  const num = (v, lo, hi) => (typeof v === 'number' && Number.isFinite(v) ? Math.min(hi, Math.max(lo, v)) : null);
-  const pick = (v, allowed, d) => (allowed.includes(v) ? v : d);
-  return {
-    summary: typeof raw.summary === 'string' ? raw.summary.slice(0, 240) : '',
-    include: tagIds(raw.include_tags),
-    exclude: tagIds(raw.exclude_tags),
-    similar: strs(raw.similar_to, 4),
-    keywords: strs(raw.title_keywords, 4),
-    maxPrice: num(raw.max_price_usd, 0, 500),
-    minReview: num(raw.min_review_percent, 0, 100),
-    free: raw.free_only === true,
-    sale: raw.on_sale_only === true,
-    platform: pick(raw.platform, ['any', 'mac', 'linux', 'steam_deck'], 'any'),
-    release: pick(raw.release, ['any', 'new', 'upcoming', 'older'], 'any'),
-    sort: pick(raw.sort, ['relevance', 'popular', 'rating', 'price_low', 'price_high', 'newest', 'discount', 'players'], 'relevance'),
-  };
+function aiReady() {
+  const cfg = aiSetup();
+  if (!cfg || !config.aiEnabled) throw Object.assign(new Error('AI is not set up. Add an API key from any AI provider in Settings > AI.'), { status: 409 });
+  return cfg;
 }
 
 async function aiSearch(q) {
-  const key = apiKey();
-  if (!key || !config.aiEnabled) throw Object.assign(new Error('AI search is not set up. Add an Anthropic API key in Settings > AI search.'), { status: 409 });
-  const { default: Anthropic } = await import('@anthropic-ai/sdk');
-  const client = new Anthropic({ apiKey: key, maxRetries: 1, timeout: 45_000 });
-  const vocab = Object.values(catalog?.tags || {}).sort().join(', ');
-  const params = {
-    model: config.aiModel,
-    max_tokens: 4000,
-    output_config: { effort: 'low', format: { type: 'json_schema', schema: AI_SCHEMA } },
-    system: [{ type: 'text', text: AI_SYSTEM + vocab, cache_control: { type: 'ephemeral' } }],
-    messages: [{ role: 'user', content: q }],
+  const cfg = aiReady();
+  const { askJSON, sanitizeIntent, SEARCH_SYSTEM, PROVIDERS } = await llm();
+  const vocab = new Map(Object.entries(catalog?.tags || {}).map(([id, n]) => [n.toLowerCase(), +id]));
+  const raw = await askJSON(cfg, { system: SEARCH_SYSTEM + Object.values(catalog?.tags || {}).sort().join(', '), user: q, maxTokens: 1500 });
+  return { intent: sanitizeIntent(raw, vocab), model: `${PROVIDERS[cfg.provider].label.replace(/ \(.*\)$/, '')} · ${cfg.model}` };
+}
+
+/* ------------------------------------------------- prices at other stores */
+// Live prices from licensed PC stores (GOG, Humble, Fanatical, Green Man Gaming, Epic and more)
+// via CheapShark's free API, which asks for a descriptive User-Agent and its redirect links.
+
+const CHEAPSHARK = 'https://www.cheapshark.com/api/1.0';
+const CS_HEADERS = { 'User-Agent': 'ProjectVanguard-SteamRedesigned/3.3 (+https://github.com/Projection-Of-Vanguard/project-vanguard)', Accept: 'application/json' };
+
+async function storeList() {
+  return cached('cs-stores', 7 * 86400e3, async () => {
+    const list = await get(`${CHEAPSHARK}/stores`, { headers: CS_HEADERS });
+    return Object.fromEntries(list.filter((s) => s.isActive).map((s) => [s.storeID, { name: s.storeName, icon: `https://www.cheapshark.com${s.images.icon}` }]));
+  });
+}
+
+async function otherStores(id) {
+  return cached(`cs-${id}`, 3 * 3600e3, async () => {
+    const stores = await storeList();
+    const found = await get(`${CHEAPSHARK}/games?steamAppID=${id}`, { headers: CS_HEADERS });
+    const hit = (Array.isArray(found) ? found : []).find((x) => +x.steamAppID === id);
+    if (!hit) return { id, deals: [], lowest: null };
+    const d = await get(`${CHEAPSHARK}/games?id=${encodeURIComponent(hit.gameID)}`, { headers: CS_HEADERS });
+    const cents = (v) => Math.round(parseFloat(v) * 100);
+    const deals = (d.deals || []).filter((x) => stores[x.storeID]).map((x) => ({
+      store: stores[x.storeID].name, icon: stores[x.storeID].icon, price: cents(x.price), retail: cents(x.retailPrice),
+      cut: Math.round(parseFloat(x.savings) || 0), url: `https://www.cheapshark.com/redirect?dealID=${encodeURIComponent(decodeURIComponent(x.dealID))}`,
+    })).filter((x) => Number.isFinite(x.price)).sort((a, b) => a.price - b.price);
+    const low = d.cheapestPriceEver;
+    return { id, deals, lowest: low ? { price: cents(low.price), date: low.date } : null };
+  });
+}
+
+/** Facts the AI gets for price advice: only live data, so it cannot make prices up. */
+async function priceFacts(id) {
+  const g = catalog?.games.find((x) => x.id === id);
+  if (!g) throw fail(404, 'Unknown game');
+  const other = await otherStores(id).catch(() => ({ deals: [], lowest: null }));
+  const usd = (c) => (c == null ? null : +(c / 100).toFixed(2));
+  return {
+    other,
+    facts: {
+      game: g.n, free_to_play: !!g.f, steam_price_usd: usd(g.p), steam_regular_price_usd: usd(g.o), steam_discount_percent: g.d || 0,
+      lowest_price_ever_usd: usd(other.lowest?.price), lowest_price_ever_date: other.lowest?.date ? new Date(other.lowest.date * 1000).toISOString().slice(0, 10) : null,
+      stores_now: other.deals.map((x) => ({ store: x.store, price_usd: usd(x.price), regular_usd: usd(x.retail), discount_percent: x.cut })),
+    },
   };
-  let response;
-  try {
-    response = FALLBACK_MODELS.has(config.aiModel)
-      ? await client.beta.messages.create({ ...params, betas: ['server-side-fallback-2026-07-01'], fallbacks: 'default' })
-      : await client.messages.create(params);
-  } catch (e) {
-    if (e instanceof Anthropic.AuthenticationError) throw Object.assign(new Error('Anthropic rejected the API key. Check it in Settings > AI search.'), { status: 401 });
-    if (e instanceof Anthropic.PermissionDeniedError) throw Object.assign(new Error('This API key cannot use the selected model.'), { status: 403 });
-    if (e instanceof Anthropic.RateLimitError) throw Object.assign(new Error('AI search is rate limited right now. Try again in a minute.'), { status: 429 });
-    if (e instanceof Anthropic.APIConnectionError) throw Object.assign(new Error('Could not reach the Anthropic API. Check your connection.'), { status: 502 });
-    if (e instanceof Anthropic.APIError) throw Object.assign(new Error(`The Anthropic API returned an error (${e.status}).`), { status: 502 });
-    throw e;
-  }
-  if (response.stop_reason === 'refusal') throw Object.assign(new Error('The AI declined this request. Try rephrasing it.'), { status: 422 });
-  if (response.stop_reason === 'max_tokens') throw Object.assign(new Error('The AI response was cut off. Try a shorter request.'), { status: 502 });
-  const text = response.content.filter((b) => b.type === 'text').map((b) => b.text).join('');
-  let raw;
-  try { raw = JSON.parse(text); } catch { throw Object.assign(new Error('The AI returned something unexpected. Try again.'), { status: 502 }); }
-  return { intent: sanitizeIntent(raw), model: response.model };
+}
+
+async function aiPrices(id) {
+  const cfg = aiReady();
+  const { askJSON, cleanAdvice, PRICE_SYSTEM } = await llm();
+  const { facts, other } = await priceFacts(id);
+  const raw = await askJSON(cfg, { system: PRICE_SYSTEM, user: JSON.stringify(facts), maxTokens: 1500 });
+  return { advice: cleanAdvice(raw, other.deals.map((x) => x.store)), model: cfg.model };
 }
 
 /* ---------------------------------------------------------------- security */
@@ -799,7 +867,7 @@ const CSP = [
   "font-src 'self'",
   "connect-src 'self'",
   "media-src 'self' https:",
-  'frame-src https://www.youtube-nocookie.com',
+  'frame-src https://www.youtube-nocookie.com https://bandcamp.com',
   "object-src 'none'",
   "base-uri 'none'",
   "form-action 'self'",
@@ -847,13 +915,10 @@ function readBody(req, limit = 16 * 1024) {
 }
 
 function publicConfig() {
-  if (SHARED) return { publicSite: true, homeServer: HOME, catalogMax: config.catalogMax, minPlayers: config.minPlayers, refreshHours: HOME ? config.refreshHours : 24, aiEnabled: false, aiConfigured: false, aiModels: [], aiKeySource: null };
-  return {
-    ...config,
-    aiModels: AI_MODELS,
-    aiConfigured: !!apiKey(),
-    aiKeySource: process.env.ANTHROPIC_API_KEY ? 'environment' : secrets.get() ? 'saved' : null,
-  };
+  if (SHARED) return { publicSite: true, homeServer: HOME, catalogMax: config.catalogMax, minPlayers: config.minPlayers, refreshHours: HOME ? config.refreshHours : 24, aiEnabled: false, aiConfigured: false };
+  const ai = aiSetup();
+  const { aiModel, ...rest } = config; // older versions kept a Claude model choice here
+  return { ...rest, aiConfigured: !!ai, ai: ai ? { provider: ai.provider, model: ai.model, base: ai.provider === 'custom' ? ai.base : undefined, source: ai.source } : null };
 }
 
 async function saveConfig(patch) {
@@ -862,7 +927,6 @@ async function saveConfig(patch) {
   if (patch.minPlayers != null) next.minPlayers = Math.round(Math.min(5000, Math.max(10, +patch.minPlayers || DEFAULT_CONFIG.minPlayers)));
   if (patch.refreshHours != null) next.refreshHours = Math.min(48, Math.max(3, +patch.refreshHours || DEFAULT_CONFIG.refreshHours));
   if (patch.aiEnabled != null) next.aiEnabled = patch.aiEnabled === true;
-  if (patch.aiModel != null && AI_MODELS.includes(patch.aiModel)) next.aiModel = patch.aiModel;
   config = next;
   await fs.writeFile(CONFIG_FILE, JSON.stringify(config, null, 2));
 }
@@ -967,10 +1031,12 @@ function makeHandler(port) {
     }
 
     try {
+      if (HOME && pathname.startsWith('/api/') && pathname !== '/api/status') notePhone(ip, false);
       if (req.method === 'GET' || req.method === 'HEAD') {
         if (!pathname.startsWith('/api/')) {
           if (HOME && pathname.startsWith('/img/')) {
             if (!allow(`${ip}:img`, 1200)) throw fail(429, 'Too many requests');
+            notePhone(ip, true);
             return await serveImage(req, res, pathname, url.search);
           }
           if (HOME && pathname === '/') return sendHomeStatus(req, res);
@@ -1020,6 +1086,10 @@ function makeHandler(port) {
           return sendJSON(req, res, 200, { prices: h.prices?.[id] || [], samples: h.samples?.[id] || [], daily: h.daily?.[id] || [] }, 300);
         }
         if ((m = pathname.match(/^\/api\/players\/(\d{1,8})$/))) return sendJSON(req, res, 200, await livePlayers(+m[1]), 30);
+        if ((m = pathname.match(/^\/api\/stores\/(\d{1,8})$/))) {
+          if (!allow(`${ip}:stores`, 60)) throw fail(429, 'Too many requests');
+          return sendJSON(req, res, 200, await otherStores(+m[1]), 1800);
+        }
         if (pathname.startsWith('/api/community')) {
           if (!allow(`${ip}:community`, LIMITS.community)) throw fail(429, 'Too many requests');
           const section = searchParams.get('section') || 'all';
@@ -1045,6 +1115,12 @@ function makeHandler(port) {
           if (typeof q !== 'string' || !q.trim() || q.length > 300) throw fail(400, 'Write a request between 1 and 300 characters.');
           return sendJSON(req, res, 200, await aiSearch(q.trim()));
         }
+        if (pathname === '/api/ai-prices') {
+          if (!allow(`${ip}:ai`, LIMITS.ai)) throw fail(429, 'Too many AI requests. Wait a moment and try again.');
+          const { id } = await readBody(req, 512);
+          if (!Number.isInteger(id) || id <= 0 || id > 99999999) throw fail(400, 'Unknown game');
+          return sendJSON(req, res, 200, await aiPrices(id));
+        }
         if (!allow(`${ip}:write`, LIMITS.write)) throw fail(429, 'Too many requests');
         if (SHARED) throw fail(403, 'This option is only available in the desktop app.');
         if (pathname === '/api/config') {
@@ -1055,11 +1131,26 @@ function makeHandler(port) {
           return sendJSON(req, res, 200, { config: publicConfig() });
         }
         if (pathname === '/api/ai-key') {
-          const { key } = await readBody(req, 2048);
-          if (key === null) { secrets.set(null); return sendJSON(req, res, 200, { config: publicConfig() }); }
-          if (typeof key !== 'string' || !/^sk-ant-[A-Za-z0-9_-]{20,200}$/.test(key.trim())) throw fail(400, 'That does not look like an Anthropic API key (it should start with sk-ant-).');
-          secrets.set(key.trim());
+          const body = await readBody(req, 4096);
+          if (body.provider === null) { secrets.set(null); return sendJSON(req, res, 200, { config: publicConfig() }); }
+          const { cleanConfig } = await llm();
+          const prev = aiSetup();
+          // Changing only the model of the saved key doesn't need the key again
+          const key = body.key || (prev?.provider === body.provider && prev?.source === 'saved' ? prev.key : '');
+          let cfg;
+          try { cfg = cleanConfig({ ...body, key }, { allowCustom: true }); } catch (e) { throw fail(400, e.message); }
+          secrets.set(JSON.stringify(cfg));
           return sendJSON(req, res, 200, { config: publicConfig() });
+        }
+        if (pathname === '/api/ai-models') {
+          if (!allow(`${ip}:ai`, LIMITS.ai)) throw fail(429, 'Too many AI requests. Wait a moment and try again.');
+          const body = await readBody(req, 4096);
+          const { cleanConfig, listModels } = await llm();
+          const prev = aiSetup();
+          const key = body.key || (prev?.provider === body.provider ? prev.key : '');
+          let cfg;
+          try { cfg = cleanConfig({ ...body, key, model: body.model || 'any' }, { allowCustom: true }); } catch (e) { throw fail(400, e.message); }
+          return sendJSON(req, res, 200, { models: await listModels(cfg) });
         }
         if (pathname === '/api/refresh') {
           if (!allow(`${ip}:refresh`, LIMITS.refresh)) throw fail(429, 'A refresh ran recently. Try again in a few minutes.');
@@ -1093,6 +1184,7 @@ export function createPublicHandler() {
     secrets = { get: () => null, set() { throw Object.assign(new Error('Not available on the website'), { status: 403 }); } };
     catalog = await readStore('catalog.json', null);
     spy = { ...spy, ...(await readStore('steamspy.json', {})) }; // games found by the desktop app's SteamSpy crawl
+    events = await readStore('events.json', []); // free games and big deals for phones away from home
     if (catalog?.games?.length) encodeCatalog();
     lastCatalogCheck = Date.now();
     return makeHandler(0);
@@ -1104,6 +1196,8 @@ export function createPublicHandler() {
       lastCatalogCheck = Date.now();
       const fresh = await readStore('catalog.json', null);
       if (fresh?.games?.length && fresh.updated > (catalog?.updated || 0)) { catalog = fresh; encodeCatalog(); }
+      const ev = await readStore('events.json', null);
+      if (Array.isArray(ev)) events = ev;
     }
     return handler(req, res);
   };
@@ -1143,6 +1237,7 @@ export async function startServer({ port = +process.env.PORT || 5173, dataDir = 
   await new Promise((resolve, reject) => { server.once('error', reject); server.listen(port, host, resolve); });
   log(`Steam redesign running at http://localhost:${port} (${host === '127.0.0.1' ? 'local only' : 'open to this network'}; catalog refresh every ${config.refreshHours}h)`);
   if (HOME && catalog) setTimeout(warmCache, 15000).unref?.();
+  if (HOME) setInterval(phoneReport, 3600e3).unref?.();
   return { port, close: () => new Promise((r) => { clearInterval(timer); clearInterval(spyTimer); server.close(() => r()); }), refresh: buildCatalog };
 }
 

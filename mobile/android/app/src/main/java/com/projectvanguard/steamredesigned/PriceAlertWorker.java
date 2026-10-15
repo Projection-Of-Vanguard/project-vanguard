@@ -6,6 +6,7 @@ import androidx.work.Constraints;
 import androidx.work.ExistingPeriodicWorkPolicy;
 import androidx.work.NetworkType;
 import androidx.work.PeriodicWorkRequest;
+import androidx.work.WorkInfo;
 import androidx.work.WorkManager;
 import androidx.work.Worker;
 import androidx.work.WorkerParameters;
@@ -24,6 +25,14 @@ public class PriceAlertWorker extends Worker {
     public Result doWork() {
         PriceAlertChecker.check(getApplicationContext());
         return Result.success();
+    }
+
+    /** Is the hourly check waiting to run? (Blocks briefly; call it off the main thread.) */
+    static boolean isScheduled(Context ctx) {
+        try {
+            for (WorkInfo w : WorkManager.getInstance(ctx).getWorkInfosForUniqueWork(NAME).get(3, TimeUnit.SECONDS)) if (!w.getState().isFinished()) return true;
+        } catch (Exception e) { /* unknown: report not scheduled */ }
+        return false;
     }
 
     /** Starts the periodic check when there are alerts, and stops it when there are none. */

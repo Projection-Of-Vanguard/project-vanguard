@@ -9,6 +9,7 @@ contextBridge.exposeInMainWorld('desktop', {
   getSettings: () => ipcRenderer.invoke('app:get-settings'),
   setSetting: (key, value) => ipcRenderer.invoke('app:set-setting', String(key), Boolean(value)),
   openDataFolder: () => ipcRenderer.invoke('app:open-data'),
+  openSteam: (appid) => ipcRenderer.send('app:open-steam', Number(appid)),
   setTitleBar: (color, symbol) => ipcRenderer.send('app:titlebar', String(color), String(symbol)),
   notify: (title, body, hash) => ipcRenderer.send('app:notify', String(title), String(body), hash == null ? null : String(hash)),
   onCommand: (callback) => {

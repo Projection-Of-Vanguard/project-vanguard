@@ -8,6 +8,7 @@ const cdn = () => (window.mobileApp?.imgBase ? `${window.mobileApp.imgBase}/shar
 const REVIEW_LABELS = ['', 'Overwhelmingly Negative', 'Very Negative', 'Negative', 'Mostly Negative', 'Mixed', 'Mostly Positive', 'Positive', 'Very Positive', 'Overwhelmingly Positive'];
 
 export const db = {
+  demos: [],
   all: [],               // every game in the catalog
   games: [],             // games shown in lists (respects the adult-content setting)
   byId: new Map(),
@@ -157,10 +158,12 @@ function normalise(r) {
     adult: !!r.ad,
     dev: r.dev || [],
     pub: r.pub || r.dev || [],
-    short: r.s || '',
+    // Catalogs before 3.3 cut this at exactly 180 characters, sometimes mid-word
+    short: r.s?.length === 180 && !/[.!?…]$/.test(r.s) ? `${r.s.replace(/\s+\S*$/, '').replace(/[,;:.\s-]+$/, '')}…` : r.s || '',
     players: r.pc ?? null,
     lowest: r.lo ?? null,
     peak: r.pk ?? null,
+    growth: r.gr ?? null, // % change in daily peak players (last 3 days against the week before)
     ts: r.ts || 0, mp: r.mp || 0, nw: r.nw || 0, tr: r.tr || 0, up: r.up || 0,
     firstSeen: (r.fs || 0) * 1000,
     header,
@@ -208,6 +211,8 @@ export async function loadCatalog(onProgress) {
   db.updated = data.updated * 1000;
   db.minPlayers = data.minPlayers || 100;
   db.changes = data.changes || db.changes;
+  // Popular demos (their own Steam apps, linked to the full game when it is in the catalog)
+  db.demos = (data.demos || []).filter((d) => !(d.tg || []).some((t) => [87, 1036, 84, 8013, 13906, 872, 784, 1027, 1445, 809, 5407].includes(t))).map((d) => { const header = asset(d.id, d.h) || `${cdn()}${d.id}/header.jpg`; return { id: d.id, name: d.n, players: d.pc || 0, header, capsule: asset(d.id, d.c) || header, parent: d.parent || null, tags: d.tg || [] }; });
   applyContentFilter();
   return db;
 }

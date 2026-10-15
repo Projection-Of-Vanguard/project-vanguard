@@ -20,9 +20,29 @@
     app.homePath = function (url) { return '/_home/' + url.replace('://', '/'); };
     var nativeFetch = window.fetch.bind(window);
     var homeBase = home && app.homePath(home);
-    app.ready = !home ? Promise.resolve() : nativeFetch(homeBase + '/api/status', { cache: 'no-store', signal: AbortSignal.timeout(2500) })
-      .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); app.apiBase = homeBase; app.usingHome = true; app.imgBase = homeBase + '/img'; })
-      .catch(function () { /* not reachable: stay online */ });
+    var useHome = function (late) {
+      app.apiBase = homeBase; app.usingHome = true; app.imgBase = homeBase + '/img'; app.homeError = null;
+      try { localStorage.setItem('st-home-seen', String(Date.now())); } catch (e) { /* storage off */ }
+      if (late === true) window.dispatchEvent(new CustomEvent('homeserver'));
+    };
+    var probe = function (ms) {
+      return nativeFetch(homeBase + '/api/status', { cache: 'no-store', signal: AbortSignal.timeout(ms) })
+        .then(function (r) { if (!r.ok) throw new Error(r.status === 502 ? 'it could not be reached on this Wi-Fi' : 'it answered with error ' + r.status); return r.json(); })
+        .then(function (s) { if (!s || typeof s.count !== 'number') throw new Error('it is not a Project Vanguard server'); });
+    };
+    // A sleeping Wi-Fi radio or a busy old PC can take a few seconds to answer the first request.
+    // If the server answered here before, wait longer for it; if it still doesn't answer, start
+    // with the online service and keep checking, switching over as soon as it does.
+    var seen = 0;
+    try { seen = +localStorage.getItem('st-home-seen') || 0; } catch (e) { /* storage off */ }
+    var retry = function (n) {
+      if (app.usingHome || n > 20) return;
+      setTimeout(function () { probe(6000).then(function () { useHome(true); }, function (e) { app.homeError = e.message; retry(n + 1); }); }, n < 3 ? 10e3 : 30e3);
+    };
+    app.ready = !home ? Promise.resolve() : probe(seen ? 6000 : 3500).then(useHome, function (e) {
+      app.homeError = e.name === 'TimeoutError' ? 'it did not answer in time' : e.message || 'it could not be reached';
+      retry(0);
+    });
     window.fetch = function (input, init) {
       if (typeof input !== 'string' || !(input.indexOf('/api/') === 0 || input === '/downloads.json')) return nativeFetch(input, init);
       var rel = input;
@@ -35,6 +55,9 @@
     theme: 'navy', accent: '#1a9fff', sale: 'lime', radius: 'default', density: 'comfortable', font: 'default', scale: 100,
     // Background
     ambient: true, ambientStrength: 80, grid: true, grain: true, transparency: true,
+    bgSource: 'game', bgBlur: 0, bgDim: 60, bgDrift: false,
+    music: '', // a soundtrack key from js/music.js, '' for none
+    startPage: 'home', cards: 'medium', homeHide: [],
     // Animations
     motion: 'system', speed: 1, transition: 'morph', morph: true, hover: 'zoom', stagger: true,
     autoplay: true, autoplaySec: 7, parallax: true, shimmer: true,
@@ -123,7 +146,19 @@
     root.dataset.shimmer = p.shimmer && level !== 'off' ? 'on' : 'off';
     root.dataset.theme = p.theme;
     root.dataset.font = p.font;
-    root.dataset.ambient = p.ambient ? 'on' : 'off';
+    // Backdrop: the art of the game in focus, a photo (from the device or any game's art), or plain
+    var bg = p.bgSource === 'photo' || p.bgSource === 'plain' ? p.bgSource : (p.ambient === false ? 'plain' : 'game');
+    var photo = null;
+    try { photo = localStorage.getItem('st-bg-photo'); } catch (e) { /* storage off */ }
+    if (bg === 'photo' && !photo) bg = 'game';
+    if (photo && /^(data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+|https:\/\/[^"'()\s]+|\/_home\/[^"'()\s]+)$/.test(photo)) s.setProperty('--bg-photo', 'url("' + photo + '")');
+    s.setProperty('--bg-blur', Math.max(0, Math.min(40, +p.bgBlur || 0)) + 'px');
+    s.setProperty('--bg-dim', String(Math.max(0, Math.min(90, +p.bgDim || 0)) / 100));
+    root.dataset.bg = bg;
+    root.dataset.bgdrift = p.bgDrift && level === 'full' ? 'on' : 'off';
+    root.dataset.ambient = bg === 'game' ? 'on' : 'off';
+    root.dataset.cards = p.cards === 'small' || p.cards === 'large' ? p.cards : 'medium';
+    root.dataset.homehide = Array.isArray(p.homeHide) ? p.homeHide.filter(function (x) { return /^[a-z-]{2,12}$/.test(x); }).join(' ') : '';
     root.dataset.grid = p.grid ? 'on' : 'off';
     root.dataset.grain = p.grain ? 'on' : 'off';
     root.dataset.solid = p.transparency ? 'off' : 'on';

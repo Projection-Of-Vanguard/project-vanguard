@@ -2,11 +2,13 @@ import { db, api, gameTags, tagName } from '../data.js';
 import { similar } from '../recs.js';
 import { state, markViewed, toggleFollow } from '../state.js';
 import {
-  $, $$, esc, icon, money, priceHTML, revHTML, revClass, cartBtn, wishBtn, capHTML, platformsHTML, deckHTML,
+  $, $$, esc, icon, money, priceHTML, revHTML, revClass, steamBtn, wishBtn, capHTML, platformsHTML, deckHTML,
   setAmbient, reduceMotion, releaseText, compactNum, num, skel, toast, ago,
 } from '../ui.js';
 import { vt } from '../transition.js';
 import { commentsHTML } from '../comments.js';
+import { mountPriceScan } from './prices.js';
+import { mountReqs } from './reqs.js';
 import { toggleOwned, toggleCompare, setTarget } from '../state.js';
 
 const FEATURE_ICONS = [
@@ -35,7 +37,7 @@ export function viewDetail(g) {
           <div class="dhero__titlerow"><h1 id="game-title" class="dhero__title">${name}</h1>${platformsHTML(g)}</div>
           <div class="dhero__meta">${revHTML(g)}${g.reviews >= 10 ? `<span>${compactNum(g.reviews)} reviews</span>` : ''}<span>${esc(releaseText(g))}</span>${g.players != null && window.STPrefs?.get().players !== false ? `<span class="live" data-live>${num(g.players)} playing now</span>${g.peak ? `<span>24h peak ${num(g.peak)}</span>` : ''}` : ''}${g.mp ? `<span class="badge-live">#${g.mp} most played</span>` : ''}</div>
         </div>
-        <div class="dhero__buy">${priceHTML(g, true)}${cartBtn(g)}${wishBtn(g)}</div>
+        <div class="dhero__buy">${priceHTML(g, true)}${steamBtn(g)}${wishBtn(g)}</div>
       </div>
     </div>
   </section>
@@ -66,6 +68,7 @@ export function viewDetail(g) {
       <button type="button" class="btn btn--ghost btn--sm" data-follow aria-pressed="${state.follow.has(g.id)}">${icon('bell', 'i i--sm')}<span>${state.follow.has(g.id) ? 'Following' : 'Follow'}</span></button>
       <a class="btn btn--ghost btn--sm" href="#/community/app/${g.id}">${icon('chat', 'i i--sm')}Community hub</a>
       <button type="button" class="btn btn--ghost btn--sm" data-share>${icon('share', 'i i--sm')}Share</button>
+      <button type="button" class="btn btn--ghost btn--sm" data-set-bg title="Use this game's art as the backdrop on every page">${icon('image', 'i i--sm')}Set as background</button>
       <button type="button" class="btn btn--ghost btn--sm" data-compare aria-pressed="${state.compare.includes(g.id)}">${icon('scale', 'i i--sm')}<span>${state.compare.includes(g.id) ? 'In comparison' : 'Compare'}</span></button>
       <button type="button" class="btn btn--ghost btn--sm" data-owned aria-pressed="${state.owned.has(g.id)}" title="Owned games are hidden from store lists and recommendations">${icon('package', 'i i--sm')}<span>${state.owned.has(g.id) ? 'You own this' : 'I own this'}</span></button>
     </div>
@@ -75,10 +78,12 @@ export function viewDetail(g) {
         <section class="buybox" aria-labelledby="h-buy">
           <h2 id="h-buy">${g.free ? 'Play' : g.coming ? 'Wishlist' : 'Buy'} ${name}</h2>
           ${g.disc ? `<p class="buybox__note">Special promotion: you save ${money(g.orig - g.price)}${g.discEnd ? `. Offer ends ${new Date(g.discEnd).toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}` : ''}.</p>` : g.free ? '<p class="buybox__note">Free to play. Optional purchases are available in game.</p>' : g.coming ? `<p class="buybox__note">${esc(releaseText(g))}. Wishlist it to hear when it launches.</p>` : ''}
-          <div class="buybox__row">${platformsHTML(g)}${deckHTML(g)}${priceHTML(g, true)}${cartBtn(g)}</div>
+          <div class="buybox__row">${platformsHTML(g)}${deckHTML(g)}${priceHTML(g, true)}${steamBtn(g)}</div>
         </section>
         <section class="history" data-history aria-labelledby="h-history"></section>
+        <section class="pricescan" data-pricescan aria-labelledby="h-prices"></section>
         <div class="prose" data-about><h2>About this game</h2>${skel.lines(5)}</div>
+        <section class="reqs" data-reqs aria-labelledby="h-reqs"></section>
         <section data-comm-preview></section>
         <section data-reviews></section>
         <section data-news></section>
@@ -112,6 +117,7 @@ export function mountDetail(root, g, cleanups) {
     .catch(() => { if (!alive.v) return; $('.media__main', root).innerHTML = `<img src="${g.capsule}" alt="${esc(g.name)}">`; $('[data-about]', root).innerHTML = `<h2>About this game</h2><p>${esc(g.short)}</p>`; $('[data-aside]', root).innerHTML = ''; });
 
   loadReviews(root, g, alive);
+  mountPriceScan($('[data-pricescan]', root), g, alive);
   api(`/api/history/${g.id}`, { ttl: 60e3 }).then((h) => { if (alive.v) fillHistory(root, g, h); }).catch(() => {});
   api(`/api/community/app/${g.id}?section=screenshots`).then((cards) => {
     if (!alive.v || !cards.length) return;
@@ -145,6 +151,10 @@ export function mountDetail(root, g, cleanups) {
     $('span', follow).textContent = on ? 'Following' : 'Follow';
     toast(on ? `Following ${g.name}` : `Stopped following ${g.name}`);
   });
+  $('[data-set-bg]', root).addEventListener('click', async () => {
+    const { setBackgroundPhoto } = await import('../settings.js');
+    try { setBackgroundPhoto(g.hero || g.capsule); toast(`${g.name} is now your background. Change it in Settings > Background`); } catch (err) { toast(err.message); }
+  });
   $('[data-share]', root).addEventListener('click', async () => {
     try { await navigator.clipboard.writeText(location.href); toast('Link copied to clipboard'); } catch { toast('Copy the address bar link to share this game'); }
   });
@@ -176,10 +186,15 @@ function fillDetails(root, g, d, cleanups) {
     const old = $('img[data-main]', main);
     const im = document.createElement('img');
     im.src = shots[i].f; im.alt = `${g.name} screenshot ${i + 1}`; im.dataset.main = '';
+    // Anything still fading out from fast clicking goes now, so it can never cover the new shot
+    $$('img:not([data-main])', main).forEach((x) => x.remove());
     if (!reduceMotion.matches) {
       im.className = 'is-entering';
-      old.removeAttribute('data-main'); old.classList.add('is-leaving');
-      old.addEventListener('animationend', () => old.remove(), { once: true });
+      im.addEventListener('animationend', () => im.classList.remove('is-entering'), { once: true });
+      old.removeAttribute('data-main'); old.classList.remove('is-entering'); old.classList.add('is-leaving');
+      const drop = () => old.remove();
+      old.addEventListener('animationend', drop, { once: true });
+      setTimeout(drop, 1500); // in case the animation never runs (hidden window, motion changed mid-way)
       main.prepend(im);
     } else old.replaceWith(im);
     btns.forEach((b, n) => b.setAttribute('aria-selected', String(n === i)));
@@ -217,6 +232,9 @@ function fillDetails(root, g, d, cleanups) {
   lb.addEventListener('click', onBackdrop);
   cleanups.push(() => { lb.removeEventListener('keydown', onKey); lb.removeEventListener('click', onBackdrop); if (lb.open) lb.close(); });
 
+  // The catalog keeps a shortened description; the game's own details have it in full
+  if (d.short) $('.side__desc', root).textContent = d.short;
+
   // About
   const about = $('[data-about]', root);
   const paras = d.about.length ? d.about : [d.short || g.short];
@@ -230,12 +248,13 @@ function fillDetails(root, g, d, cleanups) {
     e.currentTarget.setAttribute('aria-expanded', String(open));
   });
 
+  mountReqs($('[data-reqs]', root), d);
+
   // Aside
   $('[data-aside]', root).innerHTML = `
     <ul class="features" aria-label="Features">${d.categories.slice(0, 12).map((c) => `<li>${icon(featIcon(c))}${esc(c)}</li>`).join('')}</ul>
     ${d.metacritic ? `<div class="meta-card"><span class="metascore">${d.metacritic}</span><span>Metascore from critic reviews</span></div>` : ''}
     ${d.languages.length ? `<div class="meta-card meta-card--col"><h3>Languages</h3><p>${d.languages.map(esc).join(', ')}</p></div>` : ''}
-    ${d.requirements ? `<div class="meta-card meta-card--col"><h3>Minimum requirements</h3><p class="req">${esc(d.requirements)}</p></div>` : ''}
     ${d.dlc ? `<div class="meta-card"><span class="metascore metascore--dlc">${d.dlc}</span><span>Downloadable content available</span></div>` : ''}`;
 }
 

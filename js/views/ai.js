@@ -3,7 +3,6 @@ import { interpret, runIntent, EXAMPLES } from '../ai.js';
 import { $, esc, icon, capHTML, setAmbient } from '../ui.js';
 import { openSettings } from '../settings.js';
 
-const MODEL_NAMES = { 'claude-opus-5-5': 'Claude Opus 5.5', 'claude-sonnet-5-5': 'Claude Sonnet 5.5', 'claude-haiku-5-5': 'Claude Haiku 5.5' };
 const SORT_LABELS = { rating: 'Best rated first', players: 'Most played first', popular: 'Best sellers first', price_low: 'Cheapest first', price_high: 'Priciest first', newest: 'Newest first', discount: 'Biggest discount first' };
 
 export function viewAI(route) {
@@ -41,15 +40,14 @@ function resultsHTML(state) {
   const { results, refs } = runIntent(intent);
   if (results[0]) setAmbient(results[0].g.header);
   const badge = online
-    ? `<span class="ai__source ai__source--claude">${icon('sparkles', 'i i--sm')}${esc(MODEL_NAMES[source] || 'Claude')}</span>`
+    ? `<span class="ai__source ai__source--claude">${icon('sparkles', 'i i--sm')}${esc(source)}</span>`
     : `<span class="ai__source">${icon('zap', 'i i--sm')}Offline smart search</span>`;
   return `<div class="ai__head reveal" style="--i:1">
       <div><h1>${esc(query)}</h1><p class="ai__summary">${esc(intent.summary || '')}${refs.length ? ` Matching against ${refs.map((g) => esc(g.name)).join(', ')}.` : ''}</p></div>${badge}
     </div>
     <div class="ai__chips">${chips(intent)}</div>
     ${!online && status !== 409 && reason ? `<div class="ai__banner"><span>${esc(reason)} Showing offline results.</span></div>` : ''}
-    ${!online && status === 409 && document.documentElement.dataset.site === 'public' ? `<div class="ai__banner"><span>${window.mobileApp ? 'The Android app uses the built-in search parser. On a Windows PC, the desktop app can use Claude for longer, looser requests with your own API key.' : 'The website uses the built-in search parser. In the desktop app, Claude can understand longer, looser requests with your own API key.'}</span><a class="btn btn--ghost btn--sm" href="#/download">Get the app</a></div>` : ''}
-    ${!online && status === 409 && document.documentElement.dataset.site !== 'public' ? '<div class="ai__banner"><span>Add an Anthropic API key to let Claude understand longer, looser requests. These results come from the offline parser.</span><button type="button" class="btn btn--ghost btn--sm" data-open-ai>Set up AI search</button></div>' : ''}
+    ${!online && status === 409 ? '<div class="ai__banner"><span>Connect an AI with your own API key to understand longer, looser requests. Any provider works, and Google Gemini and Groq give free keys. These results come from the offline parser.</span><button type="button" class="btn btn--ghost btn--sm" data-open-ai>Connect an AI</button></div>' : ''}
     ${results.length
       ? `<p class="muted" style="margin-top:18px">${results.length} games</p><div class="ai__results">${results.map(({ g, why }) => capHTML(g, { sub: false, why })).join('')}</div>`
       : '<div class="empty" style="margin-top:22px"><h2>Nothing matches every filter</h2><p>Remove a filter above, or describe it differently.</p></div>'}`;

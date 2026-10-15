@@ -64,6 +64,70 @@ export function checkPriceAlerts() {
   return checking;
 }
 
+/* Free games and big deals (desktop app, and the website while it's open; the phone app checks
+   natively in the background). The server records them after each catalog update: /api/events. */
+const SINCE = 'st-events-since';
+function notifyAny(title, body, hash) {
+  if (window.desktop?.notify) return window.desktop.notify(title, body, hash);
+  if ('Notification' in window && Notification.permission === 'granted') {
+    try { const n = new Notification(title, { body, icon: 'assets/icon.png' }); n.onclick = () => { window.focus(); if (hash) location.hash = hash; n.close(); }; } catch { /* service-worker-only browsers */ }
+  }
+}
+let feedBusy = false;
+export async function checkDealFeed() {
+  if (android() || feedBusy) return;
+  const p = window.STPrefs?.get() || {};
+  if (p.notifyFree === false && p.notifyDeals === false) return;
+  feedBusy = true;
+  try {
+    let since = 0;
+    try { since = +localStorage.getItem(SINCE) || 0; } catch { /* storage off */ }
+    const feed = await fetch(`/api/events?since=${since}`, { cache: 'no-store' }).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+    if (!feed?.now) return;
+    let upTo = feed.now;
+    (feed.events || []).forEach((e) => { upTo = Math.max(upTo, e.ts || 0); });
+    try { localStorage.setItem(SINCE, String(upTo)); } catch { /* storage off */ }
+    if (!since) return; // the first check only notes where the feed is, so a week of old deals doesn't arrive at once
+    const fresh = (feed.events || []).filter((e) => (e.type === 'free' && p.notifyFree !== false) || (e.type === 'deal' && p.notifyDeals !== false));
+    fresh.slice(0, 3).forEach((e) => notifyAny(e.type === 'free' ? `${e.name} is free to keep` : `${e.name} is ${e.disc}% off`,
+      e.type === 'free' ? (e.orig ? `Usually ${money(e.orig)}. Free on Steam for a limited time.` : 'Free on Steam for a limited time.') : `Now ${money(e.price)} on Steam.`, `#/app/${e.id}`));
+    if (fresh.length > 3) notifyAny(`${fresh.length - 3} more deals on Steam`, 'Open Steam Redesigned to see the latest free games and discounts.', null);
+    const [e] = fresh;
+    if (e) toast(fresh.length === 1 ? (e.type === 'free' ? `${e.name} is free to keep on Steam` : `${e.name} is ${e.disc}% off`) : `${fresh.length} new free games and deals`,
+      { label: 'View', fn: () => { location.hash = fresh.length === 1 ? `#/app/${e.id}` : '#/browse/specials'; } });
+  } finally { feedBusy = false; }
+}
+
+/**
+ * Settings > Notifications > "Free game notification test": sends a notification the way a free
+ * game alert arrives, and returns what could stop real ones: [{ ok, text }].
+ */
+export async function testFreeGame() {
+  const p = window.STPrefs?.get() || {};
+  const report = [];
+  const title = 'Test: free game alerts work';
+  const body = "This is how you'll hear when a game becomes free to keep.";
+  if (android()) {
+    let r = await android().testNotification();
+    if (!r.permission) { await android().requestPermissions().catch(() => {}); r = await android().testNotification(); }
+    report.push(r.sent ? { ok: true, text: 'Test notification sent. Look in your notification shade.' }
+      : { ok: false, text: !r.appEnabled || !r.permission ? 'Notifications are off for Steam Redesigned. Turn them on in Android Settings > Apps > Steam Redesigned > Notifications.' : 'The "Deals and free games" category is off. Turn it on in Android Settings > Apps > Steam Redesigned > Notifications.' });
+    report.push(r.background ? { ok: true, text: 'Background checks are on: about every hour, even with the app closed.' } : { ok: false, text: 'Background checks are not scheduled. Open the app once more; if this stays, battery saver may be blocking them.' });
+    report.push({ ok: true, text: r.server ? `Checks use your home server (${r.server}), or the online service when it's away.` : 'Checks use the online service.' });
+  } else if (window.desktop?.notify) {
+    window.desktop.notify(title, `${body} Free game alerts in the desktop app arrive while it runs, including from the tray.`, null);
+    report.push({ ok: true, text: 'Windows notification sent. If none appeared, check Windows Settings > System > Notifications > Steam Redesigned, and Do not disturb.' });
+    report.push({ ok: true, text: 'The app checks for new free games after each catalog update, while it is running (it can stay in the tray).' });
+  } else if ('Notification' in window) {
+    const perm = Notification.permission === 'default' ? await Notification.requestPermission().catch(() => 'denied') : Notification.permission;
+    if (perm === 'granted') { notifyAny(title, body, null); report.push({ ok: true, text: 'Browser notification sent. The website can only notify you while it is open in a tab.' }); }
+    else report.push({ ok: false, text: 'This browser blocks notifications from this site. Allow them in the site settings (the icon next to the address), or get the app for notifications in the background.' });
+  } else report.push({ ok: false, text: 'This browser cannot show notifications. Get the desktop or Android app for free game alerts.' });
+  report.splice(1, 0, p.notifyFree === false ? { ok: false, text: '"New free games" is off, so real free game alerts are not sent. Turn it on above.' } : { ok: true, text: '"New free games" is on.' });
+  toast(title);
+  return report;
+}
+
 /** Ask for notification permission when the first alert is set (needs the click that set it). */
 function askPermission() {
   if (android()) return android().requestPermissions().catch(() => {});
@@ -92,6 +156,7 @@ export function initPriceAlerts() {
     if (Object.keys(state.targets).length) { askPermission(); checkPriceAlerts(); }
   });
   checkPriceAlerts();
-  setInterval(checkPriceAlerts, CHECK_EVERY);
-  document.addEventListener('visibilitychange', () => { if (!document.hidden) checkPriceAlerts(); });
+  checkDealFeed();
+  setInterval(() => { checkPriceAlerts(); checkDealFeed(); }, CHECK_EVERY);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) { checkPriceAlerts(); checkDealFeed(); } });
 }

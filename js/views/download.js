@@ -107,7 +107,7 @@ function windowsSection(m) {
         <li>Each install is independent: no remote control, no connection to anyone else's PC, and no hidden updates.</li>
         <li>Its local data server only answers your own PC. Other devices on your network can't connect to it.</li>
         <li>The app refuses debugging switches, can't be turned into a script runner, and won't start if its files were modified.</li>
-        <li>Your Anthropic API key, if you add one, is encrypted with your Windows account and never leaves your PC except to call Anthropic.</li>
+        <li>Your AI provider key, if you add one, is encrypted with your Windows account and never leaves your PC except to call that provider.</li>
         <li>Check a download with <code>certutil -hashfile &lt;file&gt; SHA256</code> and compare it with the checksum above.</li>
       </ul></div>
     </div>
@@ -119,7 +119,7 @@ function androidSection(m) {
   return `<section class="dl-platform reveal" style="--i:1" aria-labelledby="h-dl-android">
     <h2 id="h-dl-android" class="dl-platform__title">${icon('android', 'os')}Android</h2>
     <div class="dl-grid dl-grid--one">
-      ${fileCard(apk, 'Android app (.apk)', 'The store and community as a full-screen app for Android 7 and later. Your wishlist, cart and settings stay on your phone.', onAndroid())}
+      ${fileCard(apk, 'Android app (.apk)', 'The store and community as a full-screen app for Android 7 and later. Your wishlist and settings stay on your phone.', onAndroid())}
     </div>
     <div class="dl-info">
       <div><h3>Installing</h3><ol>
@@ -131,7 +131,7 @@ function androidSection(m) {
       <div><h3>Is it safe?</h3><ul>
         <li>The only permission it asks for is internet access. No camera, contacts, location or storage.</li>
         <li>It talks only to this site's read-only service and Steam's image servers, always over HTTPS.</li>
-        <li>No account and no tracking. Your wishlist, cart and settings never leave your phone.</li>
+        <li>No account and no tracking. Your wishlist and settings never leave your phone.</li>
         <li>Every version is signed with the same Project Vanguard key, so Android only installs updates that really come from us.</li>
         <li>You can compare the SHA-256 checksum above with the one on the GitHub release page.</li>
       </ul></div>

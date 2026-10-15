@@ -1,7 +1,7 @@
 // Shared UI helpers and components.
 
 import { gameTags } from './data.js';
-import { state, inCart } from './state.js';
+import { state } from './state.js';
 
 export const $ = (s, r = document) => r.querySelector(s);
 export const $$ = (s, r = document) => [...r.querySelectorAll(s)];
@@ -69,11 +69,11 @@ export function platformsHTML(g, { deck = true } = {}) {
 export const nameHTML = (g, tag = 'span', cls = '') => `<${tag} class="gname ${cls}"><span class="gname__text">${esc(g.name)}</span>${platformsHTML(g)}</${tag}>`;
 export const deckHTML = (g) => (g.deck === 3 ? '<span class="deck deck--ok">Deck verified</span>' : g.deck === 2 ? '<span class="deck">Deck playable</span>' : '');
 
-export function cartBtn(g, cls = 'btn btn--primary') {
-  if (g.free) return `<button type="button" class="${cls}" data-play="${g.id}">Play for free</button>`;
-  if (g.price == null) return `<button type="button" class="${cls.replace('btn--primary', 'btn--ghost')}" data-wish="${g.id}" data-wish-text aria-pressed="${state.wish.has(g.id)}">${icon('heart', 'i i--sm')}<span>${state.wish.has(g.id) ? 'On your wishlist' : 'Wishlist it'}</span></button>`;
-  const on = inCart(g.id);
-  return `<button type="button" class="${cls}${on ? ' is-added' : ''}" data-cart="${g.id}">${on ? `${icon('check', 'i i--sm')}In cart` : 'Add to cart'}</button>`;
+/** Buying happens on Steam: this opens the game's Steam store page (in the Steam app when it's installed). */
+export const steamUrl = (id) => `https://store.steampowered.com/app/${id}/`;
+export function steamBtn(g, cls = 'btn btn--primary') {
+  if (g.price == null && !g.free) return `<button type="button" class="${cls.replace('btn--primary', 'btn--ghost')}" data-wish="${g.id}" data-wish-text aria-pressed="${state.wish.has(g.id)}">${icon('heart', 'i i--sm')}<span>${state.wish.has(g.id) ? 'On your wishlist' : 'Wishlist it'}</span></button>`;
+  return `<a class="${cls} btn--steam" href="${steamUrl(g.id)}" target="_blank" rel="noopener" data-steam="${g.id}" aria-label="${g.free ? 'Play' : 'Buy'} ${esc(g.name)} on Steam">Open in Steam${icon('external', 'i i--sm')}</a>`;
 }
 
 export function wishBtn(g) {
