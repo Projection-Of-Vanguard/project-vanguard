@@ -1,22 +1,25 @@
-// AI providers for AI search and price advice, with your own API key from any of them.
+// Free AI for AI search and price advice: a free key from Google Gemini, Groq or OpenRouter, or your own server.
 // Runs in the browser (website and phone app: the key stays on the device and goes straight to
 // the provider, never to Project Vanguard's servers) and in Node (desktop app: the local server
 // keeps the key, encrypted). No SDKs: each provider's HTTP API is called with fetch.
 
+// Only providers and models with a free tier are offered. "models" lists the free text models, best
+// first (checked October 2026); "Load my models" shows only those. Paid providers stay defined (paid:
+// true) so a key saved by an older version keeps working, but they are no longer offered.
 export const PROVIDERS = {
-  gemini: { label: 'Google Gemini', note: 'Free key available', kind: 'gemini', base: 'https://generativelanguage.googleapis.com/v1beta', models: ['gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-2.5-pro'], hint: 'AIza…', keys: 'https://aistudio.google.com/apikey' },
-  groq: { label: 'Groq', note: 'Free key available', kind: 'openai', base: 'https://api.groq.com/openai/v1', models: ['llama-3.3-70b-versatile', 'openai/gpt-oss-120b'], hint: 'gsk_…', keys: 'https://console.groq.com/keys' },
-  openai: { label: 'OpenAI (ChatGPT)', kind: 'openai', base: 'https://api.openai.com/v1', models: ['gpt-5-mini', 'gpt-5', 'gpt-4.1-mini'], hint: 'sk-…', keys: 'https://platform.openai.com/api-keys' },
-  anthropic: { label: 'Anthropic (Claude)', kind: 'anthropic', base: 'https://api.anthropic.com/v1', models: ['claude-haiku-5-5', 'claude-sonnet-5-5', 'claude-opus-5-5'], hint: 'sk-ant-…', keys: 'https://console.anthropic.com/settings/keys' },
-  openrouter: { label: 'OpenRouter', note: 'Hundreds of models, some free', kind: 'openai', base: 'https://openrouter.ai/api/v1', models: ['openrouter/auto'], hint: 'sk-or-…', keys: 'https://openrouter.ai/keys' },
-  mistral: { label: 'Mistral', kind: 'openai', base: 'https://api.mistral.ai/v1', models: ['mistral-small-latest', 'mistral-large-latest'], hint: '', keys: 'https://console.mistral.ai/api-keys' },
-  deepseek: { label: 'DeepSeek', kind: 'openai', base: 'https://api.deepseek.com/v1', models: ['deepseek-chat'], hint: 'sk-…', keys: 'https://platform.deepseek.com/api_keys' },
-  xai: { label: 'xAI (Grok)', kind: 'openai', base: 'https://api.x.ai/v1', models: ['grok-3-mini', 'grok-3'], hint: 'xai-…', keys: 'https://console.x.ai' },
-  custom: { label: 'Other OpenAI-compatible server', note: 'Ollama, LM Studio and similar (desktop app)', kind: 'openai', base: '', models: [], hint: 'Optional', desktopOnly: true },
+  gemini: { label: 'Google Gemini', note: 'Free key', kind: 'gemini', base: 'https://generativelanguage.googleapis.com/v1beta', models: ['gemini-3.8-flash', 'gemini-3.6-flash', 'gemini-3.5-flash-lite', 'gemini-3.1-flash-lite', 'gemini-3-flash-preview', 'gemini-2.5-flash', 'gemini-2.5-flash-lite'], hint: 'AIza…', keys: 'https://aistudio.google.com/apikey' },
+  groq: { label: 'Groq', note: 'Free key', kind: 'openai', base: 'https://api.groq.com/openai/v1', models: ['openai/gpt-oss-120b', 'qwen/qwen3.8-27b', 'openai/gpt-oss-20b'], hint: 'gsk_…', keys: 'https://console.groq.com/keys' },
+  openrouter: { label: 'OpenRouter', note: 'Free models only', kind: 'openai', base: 'https://openrouter.ai/api/v1', models: ['openrouter/free', 'google/gemma-4-31b-it:free', 'nvidia/nemotron-3-super-120b-a12b:free', 'google/gemma-4-26b-a4b-it:free'], hint: 'sk-or-…', keys: 'https://openrouter.ai/keys' },
+  custom: { label: 'Your own AI server', note: 'Ollama, LM Studio and similar, desktop app', kind: 'openai', base: '', models: [], hint: 'Optional', desktopOnly: true },
+  openai: { label: 'OpenAI', paid: true, kind: 'openai', base: 'https://api.openai.com/v1', models: ['gpt-5-mini'] },
+  anthropic: { label: 'Anthropic', paid: true, kind: 'anthropic', base: 'https://api.anthropic.com/v1', models: ['claude-haiku-5-5'] },
+  mistral: { label: 'Mistral', paid: true, kind: 'openai', base: 'https://api.mistral.ai/v1', models: ['mistral-small-latest'] },
+  deepseek: { label: 'DeepSeek', paid: true, kind: 'openai', base: 'https://api.deepseek.com/v1', models: ['deepseek-chat'] },
+  xai: { label: 'xAI', paid: true, kind: 'openai', base: 'https://api.x.ai/v1', models: ['grok-3-mini'] },
 };
 
 /** Hosts the website and phone app may call directly (their Content-Security-Policy allows exactly these). */
-export const AI_HOSTS = [...new Set(Object.values(PROVIDERS).map((p) => p.base && new URL(p.base).origin).filter(Boolean))];
+export const AI_HOSTS = [...new Set(Object.values(PROVIDERS).filter((p) => !p.paid).map((p) => p.base && new URL(p.base).origin).filter(Boolean))];
 
 /** Guess the provider from the shape of a key (DeepSeek and OpenAI keys look alike: pick in the menu). */
 export function detectProvider(key) {
@@ -34,7 +37,8 @@ export function detectProvider(key) {
 export function cleanConfig(c, { allowCustom = false } = {}) {
   const provider = PROVIDERS[c?.provider] ? c.provider : null;
   if (!provider) throw new Error('Choose an AI provider.');
-  if (PROVIDERS[provider].desktopOnly && !allowCustom) throw new Error('Custom servers work in the desktop app only.');
+  if (PROVIDERS[provider].paid) throw new Error('Only free AI is offered: choose Google Gemini, Groq or OpenRouter.');
+  if (PROVIDERS[provider].desktopOnly && !allowCustom) throw new Error('Your own AI server works in the desktop app only.');
   const key = String(c.key || '').trim();
   if (provider !== 'custom' && !/^[\w.:-]{16,300}$/.test(key)) throw new Error('That API key looks incomplete. Paste the whole key.');
   if (provider === 'custom' && key && !/^[\w.:-]{1,300}$/.test(key)) throw new Error('That API key has characters a key cannot have.');
@@ -89,19 +93,23 @@ export async function askJSON(cfg, { system, user, maxTokens = 2000 }) {
   } else if (p.kind === 'gemini') {
     const d = await request(`${cfg.base}/models/${encodeURIComponent(cfg.model)}:generateContent`, { method: 'POST', headers, body: JSON.stringify({
       systemInstruction: { parts: [{ text: sys }] }, contents: [{ role: 'user', parts: [{ text: user }] }],
-      generationConfig: { responseMimeType: 'application/json', maxOutputTokens: Math.max(maxTokens, 4096) },
+      generationConfig: { responseMimeType: 'application/json', maxOutputTokens: Math.max(maxTokens, 8192) },
     }) }, label);
     text = (d.candidates?.[0]?.content?.parts || []).map((x) => x.text || '').join('');
     if (!text && d.promptFeedback?.blockReason) throw fail('The AI declined this request. Try rephrasing it.', 422);
   } else {
     const body = { model: cfg.model, messages: [{ role: 'system', content: sys }, { role: 'user', content: user }], response_format: { type: 'json_object' } };
     // OpenAI's newer models count their reasoning in this limit and only accept the newer name for it
-    if (cfg.provider === 'openai') body.max_completion_tokens = Math.max(maxTokens, 6000); else body.max_tokens = maxTokens;
+    if (cfg.provider === 'openai') body.max_completion_tokens = Math.max(maxTokens, 6000); else body.max_tokens = Math.max(maxTokens, 4000);
+    if (cfg.provider === 'groq' && /gpt-oss/.test(cfg.model)) body.reasoning_effort = 'low';
+    if (cfg.provider === 'groq' && /qwen3/.test(cfg.model)) body.reasoning_effort = 'none';
+    if (cfg.provider === 'openrouter') body.reasoning = { effort: 'low' };
     let d;
     try { d = await request(`${cfg.base}/chat/completions`, { method: 'POST', headers, body: JSON.stringify(body) }, label); }
     catch (e) {
       if (e.status !== 400 && e.status !== 502) throw e;
-      delete body.response_format; // some models and servers don't take the JSON switch
+      delete body.response_format; // some models and servers don't take the JSON switch or the reasoning setting
+      delete body.reasoning_effort; delete body.reasoning;
       d = await request(`${cfg.base}/chat/completions`, { method: 'POST', headers, body: JSON.stringify(body) }, label);
     }
     text = d.choices?.[0]?.message?.content || '';
@@ -125,8 +133,11 @@ export async function listModels(cfg) {
     ids = (d.data || d.models || []).map((m) => m.id || m.name).filter(Boolean)
       .filter((id) => !/embed|tts|whisper|dall-e|image|audio|realtime|moderation|transcri|davinci|babbage|search|guard|rerank|ocr/i.test(id));
   }
-  const rec = p.models.find((m) => ids.includes(m));
-  return [...new Set([rec, ...ids.sort().reverse()].filter(Boolean))].slice(0, 80);
+  // Only the free models: Gemini's and Groq's known free text models, OpenRouter's ":free" ones
+  if (cfg.provider === 'gemini' || cfg.provider === 'groq') ids = p.models.filter((m) => ids.includes(m));
+  if (cfg.provider === 'openrouter') ids = ids.filter((id) => id === 'openrouter/free' || (id.endsWith(':free') && !/safety|guard|lyria/i.test(id)));
+  const known = p.models.filter((m) => ids.includes(m));
+  return [...new Set([...known, ...ids.sort().reverse()])].slice(0, 80);
 }
 
 /* --------------------------------------------------------------- AI search */

@@ -46,17 +46,34 @@ function render(key) {
       <button type="button" class="iconbtn" data-music-min aria-expanded="${!small}" aria-label="${small ? 'Show the player' : 'Minimize the player'}">${icon('down', 'i i--sm')}</button>
       <button type="button" class="iconbtn" data-music-close aria-label="Stop the music and close the player">${icon('x', 'i i--sm')}</button>
     </div>
-    <div class="music__frame"><iframe src="${player(t)}" title="${esc(t.game)} soundtrack by ${esc(t.composer)}, Bandcamp player" loading="lazy" seamless></iframe></div>`;
+    <p class="music__hint" hidden>${icon('play', 'i i--sm i--fill')}Press the play button below to start the music</p>
+    <div class="music__frame"><iframe src="${player(t)}" title="${esc(t.game)} soundtrack by ${esc(t.composer)}, Bandcamp player" allow="autoplay; encrypted-media" seamless></iframe></div>
+    ${window.desktop?.openSoundSettings ? '<button type="button" class="music__sound" data-music-sound>Can\'t hear it? Open Windows volume settings</button>' : ''}`;
   document.body.append(dock);
+}
+
+/** Point at the play button until it's pressed (a click in the player moves focus into its frame). */
+function hint() {
+  if (!dock) return;
+  dock.classList.remove('is-min');
+  const h = dock.querySelector('.music__hint');
+  if (!h) return;
+  h.hidden = false;
+  dock.classList.add('is-waiting');
+  const done = () => { if (document.activeElement === dock?.querySelector('iframe')) { h.hidden = true; dock.classList.remove('is-waiting'); window.removeEventListener('blur', check); } };
+  const check = () => setTimeout(done, 600); // after the click has finished, so nothing moves under it
+  window.addEventListener('blur', check);
 }
 
 export function initMusic() {
   const apply = () => render(window.STPrefs?.get().music || '');
   apply();
   window.addEventListener('prefs', (e) => { if (!e.detail || 'music' in e.detail) apply(); });
+  window.addEventListener('music-picked', () => setTimeout(hint, 50));
   document.addEventListener('click', (e) => {
     if (!dock?.contains(e.target)) return;
     if (e.target.closest('[data-music-close]')) { window.STPrefs.set({ music: '' }); return; }
+    if (e.target.closest('[data-music-sound]')) { window.desktop?.openSoundSettings?.(); return; }
     const m = e.target.closest('[data-music-min]');
     if (m) {
       const small = dock.classList.toggle('is-min');
@@ -71,7 +88,7 @@ export function initMusic() {
 export function musicPaneHTML() {
   const cur = window.STPrefs?.get().music || '';
   return `<div class="set-group">
-    <p class="set-note">Pick a soundtrack to play while you browse. Press play in the player that opens in the corner; it keeps playing as you move around the store. Music streams from each composer's official Bandcamp page through Bandcamp's own player: nothing is copied into this app. If you love a soundtrack, buy it there to support the composer.</p>
+    <p class="set-note">Pick a soundtrack to play while you browse. Settings closes and a player opens in the corner: press its play button to start; it keeps playing as you move around the store. Music streams from each composer's official Bandcamp page through Bandcamp's own player: nothing is copied into this app. If you love a soundtrack, buy it there to support the composer.</p>
     <div class="ost-grid" role="radiogroup" aria-label="Soundtrack">${SOUNDTRACKS.map((t) => `<button type="button" class="ost" role="radio" aria-checked="${cur === t.key}" data-ost="${t.key}">
       <img src="${cover(t)}" alt="" loading="lazy" width="120" height="120"><span class="ost__game">${esc(t.game)}</span><span class="ost__by">${esc(t.composer)}</span></button>`).join('')}</div>
     <div class="set-row"><div><p class="set-row__label">Music</p><p class="set-row__desc">${cur ? `Now: ${esc(byKey(cur)?.game || '')}` : 'Off'}</p></div>${cur ? '<button type="button" class="btn btn--ghost btn--sm" data-ost="">Turn music off</button>' : ''}</div>

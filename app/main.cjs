@@ -178,6 +178,11 @@ ipcMain.handle('app:set-setting', (event, key, value) => {
   return true;
 });
 ipcMain.handle('app:open-data', (event) => { if (fromApp(event)) shell.openPath(DATA_DIR); });
+// Settings > Music: Windows' per-app volume page (a fixed address, nothing from the page)
+ipcMain.on('app:open-sound-settings', (event) => {
+  if (!fromApp(event) || process.platform !== 'win32') return;
+  shell.openExternal('ms-settings:apps-volume').catch(() => shell.openExternal('ms-settings:sound').catch(() => {}));
+});
 // Open in Steam: the Steam app's store page for that game when Steam is installed, otherwise the store website
 ipcMain.on('app:open-steam', (event, appid) => {
   if (!fromApp(event) || !Number.isInteger(appid) || appid <= 0 || appid > 99999999) return;

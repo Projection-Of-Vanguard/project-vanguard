@@ -68,7 +68,7 @@ const SECTIONS = [
     { key: 'viewerAnim', type: 'seg', label: 'Viewer opening', desc: 'How screenshots and art open full screen.', options: [['zoom', 'Zoom'], ['slide', 'Slide up'], ['fade', 'Fade'], ['none', 'None']] },
     { key: 'commentsAnim', type: 'seg', label: 'Comments opening', desc: 'How a comment thread opens under a post.', options: [['expand', 'Expand'], ['slide', 'Slide'], ['fade', 'Fade'], ['none', 'Instant']] },
   ] },
-  { id: 'ai', label: 'AI', icon: 'sparkles', desc: 'AI search and price advice, with a key from any AI provider', custom: 'ai' },
+  { id: 'ai', label: 'AI', icon: 'sparkles', desc: 'AI search and price advice, with a free AI key', custom: 'ai' },
   { id: 'catalog', label: 'Catalog & data', icon: 'database', desc: 'Which games the store tracks', custom: 'catalog' },
   { id: 'music', label: 'Music', icon: 'play', desc: 'Game soundtracks while you browse', custom: 'music' },
   { id: 'notifications', label: 'Notifications', icon: 'bell', desc: 'Pop-up messages', rows: [
@@ -209,10 +209,10 @@ async function aiPane() {
   const status = saved
     ? `<span class="set-status set-status--ok">${icon('check', 'i i--sm')}Connected: ${esc(name(saved.provider))} · ${esc(saved.model)}${saved.source === 'environment' ? ' (key from ANTHROPIC_API_KEY)' : ''}</span>`
     : '<span class="set-status set-status--warn">Not connected. AI search uses the offline smart search, and price advice is off.</span>';
-  const options = Object.entries(PROVIDERS).filter(([, x]) => where === 'server' || !x.desktopOnly)
+  const options = Object.entries(PROVIDERS).filter(([id, x]) => (where === 'server' || !x.desktopOnly) && (!x.paid || id === saved?.provider))
     .map(([id, x]) => `<option value="${id}"${id === provider ? ' selected' : ''}>${esc(x.label)}${x.note ? ` (${esc(x.note)})` : ''}</option>`).join('');
   return `<div class="set-group">
-    <div class="set-row set-row--block"><div><p class="set-row__label">Status</p><p class="set-row__desc">AI search and price advice send only your request and public game facts (name and prices) to the AI you connect. Any provider's key works: Google Gemini and Groq give free keys.</p></div>${status}</div>
+    <div class="set-row set-row--block"><div><p class="set-row__label">Status</p><p class="set-row__desc">AI search and price advice send only your request and public game facts (name and prices) to the AI you connect. Only free AI is offered: a free key from Google Gemini, Groq or OpenRouter, or your own AI server in the desktop app.</p></div>${status}</div>
     ${where === 'server' ? `<div class="set-row"><div><p class="set-row__label">Use AI</p><p class="set-row__desc">When off, AI search uses the offline parser and price advice is hidden.</p></div>
       <button type="button" class="switch" role="switch" aria-checked="${sess.config.aiEnabled}" data-server="aiEnabled" aria-label="Use AI"></button></div>` : ''}
   </div>
@@ -447,9 +447,12 @@ function build() {
     }
     const ost = t.closest('[data-ost]');
     if (ost) {
+      if (!ost.dataset.ost) { P().set({ music: '' }); return render(false); }
+      // Close Settings so the player in the corner can be reached, and point at its play button
+      close();
       P().set({ music: ost.dataset.ost });
-      if (ost.dataset.ost) toast('Press play in the player in the corner. It keeps playing while you browse');
-      return render(false);
+      window.dispatchEvent(new CustomEvent('music-picked'));
+      return;
     }
     if (t.closest('[data-bg-clear]')) {
       try { localStorage.removeItem('st-bg-photo'); } catch { /* storage off */ }

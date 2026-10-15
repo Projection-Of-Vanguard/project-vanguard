@@ -47,7 +47,7 @@ function resultsHTML(state) {
     </div>
     <div class="ai__chips">${chips(intent)}</div>
     ${!online && status !== 409 && reason ? `<div class="ai__banner"><span>${esc(reason)} Showing offline results.</span></div>` : ''}
-    ${!online && status === 409 ? '<div class="ai__banner"><span>Connect an AI with your own API key to understand longer, looser requests. Any provider works, and Google Gemini and Groq give free keys. These results come from the offline parser.</span><button type="button" class="btn btn--ghost btn--sm" data-open-ai>Connect an AI</button></div>' : ''}
+    ${!online && status === 409 ? '<div class="ai__banner"><span>Connect a free AI (a free key from Google Gemini, Groq or OpenRouter) to understand longer, looser requests. These results come from the offline parser.</span><button type="button" class="btn btn--ghost btn--sm" data-open-ai>Connect an AI</button></div>' : ''}
     ${results.length
       ? `<p class="muted" style="margin-top:18px">${results.length} games</p><div class="ai__results">${results.map(({ g, why }) => capHTML(g, { sub: false, why })).join('')}</div>`
       : '<div class="empty" style="margin-top:22px"><h2>Nothing matches every filter</h2><p>Remove a filter above, or describe it differently.</p></div>'}`;

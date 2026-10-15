@@ -2128,3 +2128,12 @@ html[data-homehide~="tabs"] [aria-labelledby="h-tabs"] { display: none; }
 .chipset__chip .i { opacity: 0; transition: opacity .2s; }
 .chipset__chip[aria-pressed="true"] { color: var(--text); background: rgba(var(--accent-rgb), .16); box-shadow: inset 0 0 0 1px rgba(var(--accent-rgb), .5); }
 .chipset__chip[aria-pressed="true"] .i { opacity: 1; }
+
+/* Soundtrack dock: point at the play button until it is pressed; desktop volume shortcut */
+.music__hint { display: flex; align-items: center; gap: 8px; margin: 0 10px 8px; padding: 8px 10px; border-radius: var(--r-sm); font-size: 13px; font-weight: 600; color: #0b1424; background: var(--sale); }
+.music__hint[hidden] { display: none; }
+/* A static highlight: an endless animation around the Bandcamp frame makes Electron drop clicks into it */
+.music.is-waiting { box-shadow: 0 24px 60px -24px rgba(0, 0, 0, .95), 0 0 0 2px var(--sale), 0 0 28px -8px var(--sale); }
+.music__sound { display: block; width: 100%; padding: 8px 12px; font-size: 12.5px; text-align: left; color: var(--text-3); border-top: 1px solid var(--line); }
+.music__sound:hover, .music__sound:focus-visible { color: var(--glacier); background: rgba(var(--tint-rgb), .05); }
+.music.is-min .music__sound { display: none; }

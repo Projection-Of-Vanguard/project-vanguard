@@ -67,7 +67,7 @@ export function mountPriceScan(box, g, alive) {
       <div class="pscan__aiwrap" data-pscan-ai>
         ${connected
           ? `<button type="button" class="btn btn--primary btn--sm pscan__ask" data-pscan-ask>${icon('sparkles', 'i i--sm')}Ask AI: buy now, or wait? And where else can I play it?</button>`
-          : `<div class="pscan__connect"><p>${icon('sparkles', 'i i--sm')}Connect an AI (any provider's key, Gemini and Groq are free) for buying advice and the consoles and subscriptions this game is on.</p><button type="button" class="btn btn--ghost btn--sm" data-pscan-connect>Connect an AI</button></div>`}
+          : `<div class="pscan__connect"><p>${icon('sparkles', 'i i--sm')}Connect a free AI (a free key from Google Gemini, Groq or OpenRouter) for buying advice and the consoles and subscriptions this game is on.</p><button type="button" class="btn btn--ghost btn--sm" data-pscan-connect>Connect an AI</button></div>`}
       </div>
       <p class="pscan__fine">Prices in US dollars from licensed stores, via CheapShark. Store links go through CheapShark.</p>
     </div>`;
