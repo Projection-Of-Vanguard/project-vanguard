@@ -31,6 +31,8 @@ import java.util.regex.Pattern;
 public class HomeServerProxy extends BridgeWebViewClient {
     private static final Pattern PATH = Pattern.compile("^/_home/(https?)/([A-Za-z0-9.-]{1,253}(?::\\d{1,5})?)(/(?:api|img)/[A-Za-z0-9._~%/@:+,=-]*)$");
     private static final Pattern TYPE = Pattern.compile("^(application/json|image/(?:jpeg|png|gif|webp|avif))\\b.*", Pattern.CASE_INSENSITIVE);
+    // Home-network addresses only (an IP, a one-word PC name or a local name), never a website's domain
+    private static final Pattern LAN_HOST = Pattern.compile("^(?:(?:\\d{1,3}\\.){3}\\d{1,3}|[a-z0-9-]{1,63}|[a-z0-9.-]{1,240}\\.(?:local|lan|home|home\\.arpa|internal|localdomain|ts\\.net))(?::\\d{1,5})?$", Pattern.CASE_INSENSITIVE);
     private static final long CACHE_BYTES = 300L * 1024 * 1024;
 
     private final Bridge bridge;
@@ -55,7 +57,7 @@ public class HomeServerProxy extends BridgeWebViewClient {
         if (path == null || !path.startsWith("/_home/") || !bridge.getHost().equals(request.getUrl().getHost())) return super.shouldInterceptRequest(view, request);
         if (!"GET".equals(request.getMethod()) || isDocument(request)) return error(403, "Forbidden");
         Matcher m = PATH.matcher(path);
-        if (!m.matches() || path.contains("/../") || path.contains("/./")) return error(400, "Bad Request");
+        if (!m.matches() || !LAN_HOST.matcher(m.group(2)).matches() || path.contains("/../") || path.contains("/./")) return error(400, "Bad Request");
         String query = request.getUrl().getEncodedQuery();
         String target = m.group(1) + "://" + m.group(2) + m.group(3) + (query == null ? "" : "?" + query);
         try {

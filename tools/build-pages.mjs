@@ -255,7 +255,7 @@ ${shots.map(([n, alt], i) => `          <figure class="shot${i === 0 ? ' shot--w
   <footer class="foot">
     <div class="wrap foot__in">
       <p><b>Steam Redesigned</b> is an unofficial fan project and is not affiliated with Valve. Game names, art, prices and posts belong to their owners. Data comes from the Steam store, Steam Web APIs, Steam Community and SteamSpy.</p>
-      <p><a href="${WEB}">Web version</a> · <a href="${REPO}">Source code</a> · <a href="${REPO}/releases">All releases</a></p>
+      <p><a href="${WEB}">Web version</a> · <a href="${REPO}">Source code</a> · <a href="${REPO}/releases">All releases</a> · <a href="privacy.html">Privacy</a></p>
     </div>
   </footer>
 </body>
@@ -263,4 +263,62 @@ ${shots.map(([n, alt], i) => `          <figure class="shot${i === 0 ? ' shot--w
 `;
 fs.writeFileSync(path.join(OUT, 'index.html'), html);
 fs.writeFileSync(path.join(OUT, '.nojekyll'), '');
+
+// Privacy policy (linked from the footer, and the address given to the Microsoft Store)
+const privacy = `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Privacy — Steam Redesigned</title>
+  <meta name="description" content="What Steam Redesigned (Project Vanguard) keeps, what it sends and to whom.">
+  <meta name="color-scheme" content="dark">
+  <link rel="icon" href="assets/icon.png">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="top">
+    <div class="wrap top__in">
+      <a class="brand" href="./" aria-label="Project Vanguard home">${mark}<span>Project <b>Vanguard</b></span></a>
+      <nav aria-label="Sections"><a href="./">Home</a><a href="./#download">Download</a></nav>
+    </div>
+  </header>
+  <main id="main">
+    <section class="band" aria-labelledby="h-privacy">
+      <div class="wrap prose">
+        <h2 id="h-privacy">Privacy</h2>
+        <p>Steam Redesigned (Project Vanguard) is an unofficial fan app for Windows, Android and the web. It has no accounts, no ads, no analytics and no tracking. This page covers every version. Last updated ${date}.</p>
+        <h3>What stays on your device</h3>
+        <ul>
+          <li>Your wishlist, owned and hidden games, price alerts, settings, background photo and AI chat history are kept on your device only. Nobody else receives them.</li>
+          <li>If you connect an AI, its API key stays on your device. The Windows app encrypts it with Windows' own data protection; the Android app and the website keep it in the app's or browser's local storage.</li>
+          <li>Clearing the app's data, uninstalling it or clearing the site's data in your browser removes all of this.</li>
+        </ul>
+        <h3>What is sent, and to whom</h3>
+        <ul>
+          <li><b>Steam and SteamSpy:</b> the app reads public store, player-count, review and community data. No Steam sign-in is used, and nothing about you is sent.</li>
+          <li><b>CheapShark:</b> to compare a game's price at other stores, the game's Steam ID is sent.</li>
+          <li><b>Your AI provider:</b> only when you use AI search, price advice or the AI chat, your question (and for price advice, the game's public prices) goes to the provider you chose (Google Gemini, Groq, OpenRouter or your own AI server) with your key, under that provider's privacy policy.</li>
+          <li><b>YouTube and Bandcamp:</b> only when you play a soundtrack or a game video, their official players load (YouTube in its privacy-enhanced mode).</li>
+          <li><b>The website and the Android app</b> get catalog data from projectvanguard.vercel.app, hosted by Vercel. Like any web server it sees your IP address to answer; the app keeps only short-lived counters in memory to limit abuse.</li>
+          <li><b>A home server</b> (ProjectServer), if you run one, serves phones on your own network and sends nothing elsewhere.</li>
+          <li><b>Update check:</b> the app reads the newest version number from this GitHub page.</li>
+        </ul>
+        <h3>Children</h3>
+        <p>The app doesn't knowingly collect information from anyone, including children.</p>
+        <h3>Questions</h3>
+        <p>Open an issue on <a href="${REPO}/issues">GitHub</a>.</p>
+      </div>
+    </section>
+  </main>
+  <footer class="foot">
+    <div class="wrap foot__in">
+      <p><b>Steam Redesigned</b> is an unofficial fan project and is not affiliated with Valve.</p>
+      <p><a href="./">Home</a> · <a href="${REPO}">Source code</a></p>
+    </div>
+  </footer>
+</body>
+</html>
+`;
+fs.writeFileSync(path.join(OUT, 'privacy.html'), privacy);
 console.log(`pages/ built for ${dl.version}`);

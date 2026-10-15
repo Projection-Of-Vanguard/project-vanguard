@@ -3,7 +3,7 @@
 // parser understands the common patterns (price, tags, "like X", platforms, release window).
 
 import { db, norm, searchGames, tagName, tagId, post, getSession } from './data.js';
-import { askJSON, sanitizeIntent, cleanAdvice, chat, chatSystem, cleanMessages, SEARCH_SYSTEM, PRICE_SYSTEM, PROVIDERS } from './llm.js';
+import { askJSON, sanitizeIntent, cleanAdvice, chat, chatSystem, cleanMessages, relatedGames, askedText, SEARCH_SYSTEM, PRICE_SYSTEM, PROVIDERS } from './llm.js';
 import { similarity } from './recs.js';
 
 const SYNONYMS = {
@@ -105,8 +105,10 @@ export async function askVanguard(messages) {
   if (await aiWhere() === 'server') return post('/api/ai-chat', { messages });
   const cfg = deviceAI.get();
   if (!cfg) throw noAI();
-  const top = [...db.all].sort((a, b) => (b.peak || 0) - (a.peak || 0)).slice(0, 120).map((g) => g.name);
-  const reply = await chat(cfg, { system: chatSystem(top), messages: cleanMessages(messages) });
+  const msgs = cleanMessages(messages);
+  const top = [...db.all].sort((a, b) => (b.peak || 0) - (a.peak || 0)).slice(0, 80).map((g) => g.name);
+  const related = relatedGames(db.all.map((g) => ({ name: g.name, tags: g.tags.map(tagName).join(' ').toLowerCase(), peak: g.peak })), askedText(msgs));
+  const reply = await chat(cfg, { system: chatSystem(top, related), messages: msgs });
   if (!reply) throw Object.assign(new Error('The AI sent an empty answer. Try again.'), { status: 502 });
   return { reply, model: cfg.model };
 }

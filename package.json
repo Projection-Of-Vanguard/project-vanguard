@@ -1,7 +1,7 @@
 {
   "name": "steam-redesigned",
   "productName": "Steam Redesigned",
-  "version": "3.4.0",
+  "version": "3.5.0",
   "description": "Steam Redesigned (Project Vanguard): an unofficial Steam store and community app running on live Steam data.",
   "private": true,
   "type": "module",
@@ -10,7 +10,8 @@
     "start": "electron .",
     "serve": "node server.mjs",
     "dist": "node tools/build-installer.mjs",
-    "icon": "node tools/make-icon.mjs"
+    "icon": "node tools/make-icon.mjs",
+    "dist:store": "node tools/build-store.mjs"
   },
   "dependencies": {
     "@vercel/blob": "2.8.1"
@@ -111,7 +112,7 @@
       "installerHeader": "assets/installer-header.bmp",
       "deleteAppDataOnUninstall": false,
       "runAfterFinish": true,
-      "appPackageUrl": "https://github.com/Projection-Of-Vanguard/project-vanguard/releases/download/v3.4.0/steam-redesigned-3.4.0-x64.nsis.7z",
+      "appPackageUrl": "https://github.com/Projection-Of-Vanguard/project-vanguard/releases/download/v3.5.0/steam-redesigned-3.5.0-x64.nsis.7z",
       "artifactName": "Steam-Redesigned-Setup-${version}.${ext}",
       "include": "assets/installer.nsh"
     },
@@ -123,6 +124,20 @@
       "shortcutName": "Steam Redesigned",
       "runAfterFinish": true,
       "artifactName": "Steam-Redesigned-${version}.${ext}"
+    },
+    "appx": {
+      "applicationId": "SteamRedesigned",
+      "displayName": "Steam Redesigned",
+      "publisherDisplayName": "Project Vanguard",
+      "backgroundColor": "#0b1424",
+      "languages": [
+        "en-US"
+      ],
+      "showNameOnTiles": false,
+      "customExtensionsPath": "tools/appx-extensions.xml",
+      "artifactName": "Steam-Redesigned-${version}.${ext}",
+      "minVersion": "10.0.17763.0",
+      "maxVersionTested": "10.0.26100.0"
     }
   },
   "repository": {

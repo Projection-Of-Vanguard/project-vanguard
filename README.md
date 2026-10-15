@@ -122,6 +122,7 @@ Every install is fully independent. There is no connection between copies, no re
 
 **The home server**
 - Read-only, like the website: no settings, keys or refresh requests from the network (403).
+- Answers only home-network addresses (an IP address, a PC name or a local name like `pc.local`), never a website's domain name, which blocks DNS rebinding. The phone's proxy only goes to the same kinds of address.
 - Meant for your home network: the firewall rule it adds only opens its port on networks Windows marks as Private. It refuses reads from other websites and rate-limits every endpoint group.
 - The photo proxy only fetches Steam's own image hosts, only stores images (up to 15 MB each), and is capped at the size you set.
 
@@ -157,6 +158,8 @@ That starts the desktop app. To use it in a browser instead, run `node server.mj
 Step 2b, the Android app: `node tools/build-android.mjs` builds `dist/android/Steam-Redesigned-<version>.apk`. It needs JDK 21, the Android SDK (platform 36) and the signing key in `mobile/signing/` (not in the repository; keep a backup, because updates must be signed with the same key). Run it after step 2 (which empties `dist/`) and before step 3, which uploads the APK with the Windows installers.
 
 Step 6, the home server: `node tools/build-home-server.mjs` refreshes the `ProjectServer` folder next to this one (it keeps that folder's `config.json` and data).
+
+Step 7, the Microsoft Store: `npm run dist:store` builds `dist-store/Steam-Redesigned-<version>.appx`, which Microsoft signs when it passes certification. See [docs/MICROSOFT-STORE.md](docs/MICROSOFT-STORE.md) for the free developer account, the app identity and the submission.
 
 ## Folder
 

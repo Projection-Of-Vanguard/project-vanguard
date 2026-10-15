@@ -160,3 +160,11 @@ code, pre { font-family: ui-monospace, "Cascadia Code", Consolas, monospace; fon
 .features--three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .install pre code { white-space: pre-wrap; word-break: break-all; }
 @media (max-width: 960px) { .features--three { grid-template-columns: 1fr; } }
+
+/* Privacy page */
+.prose { max-width: 72ch; }
+.prose h3 { margin: 34px 0 10px; }
+.prose p, .prose li { color: var(--text-2); line-height: 1.65; }
+.prose ul { padding-left: 20px; display: grid; gap: 8px; }
+.prose b { color: var(--text); }
+.prose a { color: var(--blue); }

@@ -852,9 +852,13 @@ async function priceFacts(id) {
 /** Vanguard, the mascot: one chat turn with the connected AI. */
 async function aiChat(messages) {
   const cfg = aiReady();
-  const { chat, chatSystem, cleanMessages } = await llm();
-  const top = [...(catalog?.games || [])].sort((a, b) => (b.pk || 0) - (a.pk || 0)).slice(0, 120).map((g) => g.n);
-  const reply = await chat(cfg, { system: chatSystem(top), messages: cleanMessages(messages) });
+  const { chat, chatSystem, cleanMessages, relatedGames, askedText } = await llm();
+  const msgs = cleanMessages(messages);
+  const games = catalog?.games || [];
+  const tags = catalog?.tags || {};
+  const top = [...games].sort((a, b) => (b.pk || 0) - (a.pk || 0)).slice(0, 80).map((g) => g.n);
+  const related = relatedGames(games.map((g) => ({ name: g.n, tags: (g.tg || []).map((t) => tags[t] || '').join(' ').toLowerCase(), peak: g.pk })), askedText(msgs));
+  const reply = await chat(cfg, { system: chatSystem(top, related), messages: msgs });
   if (!reply) throw Object.assign(new Error('The AI sent an empty answer. Try again.'), { status: 502 });
   return { reply: reply.slice(0, 6000), model: cfg.model };
 }
@@ -1009,7 +1013,10 @@ function makeHandler(port) {
   // Locally: only this machine's loopback names. Hosted: Vercel only routes this project's own domains here.
   const hosts = new Set([`localhost:${port}`, `127.0.0.1:${port}`, `[::1]:${port}`]);
   const origins = new Set([...hosts].map((h) => `http://${h}`));
-  const hostOk = (host) => (SHARED ? /^[a-z0-9.-]{1,253}(:\d{1,5})?$/.test(host) : hosts.has(host));
+  // Home server: only home-network addresses (an IP, a one-word PC name or a local name like pc.local),
+  // never a website's domain, so a site that points its own name at this PC (DNS rebinding) gets nothing.
+  const lanHost = /^(?:(?:\d{1,3}\.){3}\d{1,3}|[a-z0-9-]{1,63}|[a-z0-9.-]{1,240}\.(?:local|lan|home|home\.arpa|internal|localdomain|ts\.net))(?::\d{1,5})?$/;
+  const hostOk = (host) => (PUBLIC ? /^[a-z0-9.-]{1,253}(:\d{1,5})?$/.test(host) : HOME ? lanHost.test(host) : hosts.has(host));
   // The Android app bundles the interface and calls the hosted API from its own fixed origin.
   // ".projectvanguard" is not a real top-level domain, so no website can send this origin.
   const fromApp = (origin) => SHARED && origin === APP_ORIGIN;

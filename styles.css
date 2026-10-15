@@ -56,6 +56,10 @@
 *::before,
 *::after { box-sizing: border-box; }
 
+/* The page still scrolls (wheel, keys, touch), without a scroll bar on the right edge */
+html { scrollbar-width: none; }
+html::-webkit-scrollbar, body::-webkit-scrollbar { display: none; }
+
 body {
   margin: 0;
   min-height: calc(100vh / var(--zoom, 1));

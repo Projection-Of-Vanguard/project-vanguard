@@ -157,19 +157,43 @@ export async function chat(cfg, { system, messages, maxTokens = 1200 }) {
   return String(d.choices?.[0]?.message?.content || '').replace(/<think>[\s\S]*?<\/think>/g, '').trim();
 }
 
-/** Vanguard, the mascot: who it is and how it answers. games: names of popular games in the catalog. */
-export function chatSystem(games) {
-  return `You are Vanguard, the friendly cloud-headed robot mascot of Steam Redesigned, an unofficial redesign of the Steam store. You help people find PC games and answer questions about games, the store, Steam and gaming.
+/** Vanguard, the mascot: who it is and how it answers.
+ *  games: popular games in the store; related: store games that match the question (relatedGames). */
+export function chatSystem(games, related = []) {
+  return `You are Vanguard, the friendly cloud-headed robot mascot of Steam Redesigned, an unofficial redesign of the Steam store. You are a gaming expert: answer from everything you know about games on every platform (PC, consoles, mobile, old and new), including games that aren't on Steam or in this store.
 
 How you answer:
-- Be warm and brief: a few short sentences, or a short list of up to 6 items. No headings.
-- Whenever you name a specific game, write its exact title in double square brackets, like [[Hades]] or [[Stardew Valley]], so the app can show it. Prefer games from the catalog list below when they fit.
-- Don't invent prices, discounts, release dates or player counts. The app shows live prices on each game's page.
+- Really answer the question, like a friend who knows games well: explain, compare and give reasons. When you suggest games, add a short reason for each one (what it is and why it fits).
+- Be warm and to the point: a few short paragraphs, or a list of up to 6 items. No headings.
+- Whenever you name a specific game, write its exact title in double square brackets, like [[Hades]] or [[Stardew Valley]]. The app links the games it sells and shows cards for them.
+- The game lists below are hints about what this store sells, not limits. Never say a game "isn't in the catalog" or that you can only see some games.
+- Read short follow-ups ("what about Hogwarts?") in the context of the conversation.
+- Don't invent prices, discounts or player counts. The app shows live prices on each game's page.
 - If a question has nothing to do with games, answer briefly and kindly steer back to games.
 - Plain text. Lists use "- " at the start of a line. You may use **bold** for emphasis.
-
-Popular games in this store's catalog: ${games.join(', ')}`;
+${related.length ? `\nStore games that match this question: ${related.join(', ')}\n` : ''}
+Popular games in the store: ${games.join(', ')}`;
 }
+
+const STOP = new Set('the and for with what are about like some any game games play playing played that this these those from you your have has best most good great more which who how why when where does can could would should there they them into than then also just only very really want wants looking recommend recommendations suggest something anything other others new old top famous popular tell know think need'.split(' '));
+/** Store games that fit the question: its words found in a game's name (strong) or tags.
+ *  list: [{ name, tags (lowercase tag names), peak }]. */
+export function relatedGames(list, text, limit = 16) {
+  const stems = [...new Set((String(text).toLowerCase().match(/[a-z0-9]{3,}/g) || []).filter((w) => !STOP.has(w))
+    .map((w) => (w.length > 4 ? w.replace(/(ies|es|s|ing|al)$/, '') : w)))].slice(0, 14);
+  if (!stems.length) return [];
+  const out = [];
+  for (const g of list) {
+    const name = String(g.name || '').toLowerCase();
+    let s = 0;
+    for (const w of stems) s += name.includes(w) ? 3 : (g.tags || '').includes(w) ? 1 : 0;
+    if (s) out.push([g, s]);
+  }
+  return out.sort((a, b) => b[1] - a[1] || (b[0].peak || 0) - (a[0].peak || 0)).slice(0, limit).map(([g]) => g.name);
+}
+
+/** The words to match the store against: the last two things the person asked. */
+export const askedText = (messages) => messages.filter((m) => m.role === 'user').slice(-2).map((m) => m.content).join(' ');
 
 /** Keep a conversation the right shape and size before it goes to a provider. */
 export function cleanMessages(list) {

@@ -29,6 +29,8 @@ const SETTINGS_FILE = path.join(DATA_DIR, 'app-settings.json');
 const SECRET_FILE = path.join(DATA_DIR, 'secrets.bin');
 const DEV = !app.isPackaged && process.argv.includes('--dev');
 const START_HIDDEN = process.argv.includes('--hidden');
+// Installed from the Microsoft Store (an MSIX package): Windows itself runs the startup entry and the updates
+const STORE = process.windowsStore === true;
 
 const DEFAULTS = { closeToTray: true, startWithWindows: false, startMinimized: false, hardwareAcceleration: true, autoUpdate: false, bounds: null, maximized: false, trayHintShown: false };
 const BOOL_KEYS = new Set(['closeToTray', 'startWithWindows', 'startMinimized', 'hardwareAcceleration', 'autoUpdate']);
@@ -93,7 +95,7 @@ function createWindow() {
       webSecurity: true,
       spellcheck: false,
       devTools: DEV,
-      additionalArguments: [`--app-version=${app.getVersion()}`],
+      additionalArguments: [`--app-version=${app.getVersion()}`, ...(STORE ? ['--store'] : [])],
     },
   });
   if (settings.maximized) win.maximize();
@@ -177,6 +179,8 @@ function launchTarget() {
   return { target: process.execPath, args: [`"${app.getAppPath()}"`], icon: path.join(ROOT, 'assets', 'icon.ico') };
 }
 function applyLoginItem() {
+  // The Store package declares a startup task instead, which people switch on in Windows Settings > Apps > Startup
+  if (STORE) return;
   if (process.platform !== 'win32') { app.setLoginItemSettings({ openAtLogin: settings.startWithWindows, args: ['--hidden'] }); return; }
   try { app.setLoginItemSettings({ openAtLogin: false }); app.setLoginItemSettings({ openAtLogin: false, args: ['--hidden'] }); } catch { /* no old entry */ }
   try {
@@ -199,7 +203,7 @@ const fromApp = (event) => isAppUrl(event.senderFrame?.url || '');
 
 ipcMain.handle('app:get-settings', (event) => {
   if (!fromApp(event)) return null;
-  return { closeToTray: settings.closeToTray, startWithWindows: settings.startWithWindows, startMinimized: settings.startMinimized, hardwareAcceleration: settings.hardwareAcceleration, autoUpdate: settings.autoUpdate, dataDir: DATA_DIR };
+  return { closeToTray: settings.closeToTray, startWithWindows: settings.startWithWindows, startMinimized: settings.startMinimized, hardwareAcceleration: settings.hardwareAcceleration, autoUpdate: settings.autoUpdate, dataDir: DATA_DIR, store: STORE };
 });
 ipcMain.handle('app:set-setting', (event, key, value) => {
   if (!fromApp(event) || !BOOL_KEYS.has(key) || typeof value !== 'boolean') return false;
@@ -209,6 +213,11 @@ ipcMain.handle('app:set-setting', (event, key, value) => {
   return true;
 });
 ipcMain.handle('app:open-data', (event) => { if (fromApp(event)) shell.openPath(DATA_DIR); });
+// Store version: Windows' own Startup apps page, where its startup entry is switched on
+ipcMain.on('app:open-startup-settings', (event) => {
+  if (!fromApp(event) || process.platform !== 'win32') return;
+  shell.openExternal('ms-settings:startupapps').catch(() => {});
+});
 // Settings > Music: Windows' per-app volume page (a fixed address, nothing from the page)
 ipcMain.on('app:open-sound-settings', (event) => {
   if (!fromApp(event) || process.platform !== 'win32') return;
